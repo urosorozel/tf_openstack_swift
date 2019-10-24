@@ -1,0 +1,44 @@
+---
+cidr_networks:
+  container: 172.29.236.0/22
+  tunnel: 172.29.240.0/22
+  storage: 172.29.244.0/22
+  lbaas: 172.29.252.0/22
+
+used_ips:
+  - "172.29.236.1,172.29.238.255"
+  - "172.29.240.1,172.29.242.255"
+  - "172.29.244.1,172.29.246.255"
+  - "172.29.252.1,172.29.254.255"
+
+global_overrides:
+  internal_lb_vip_address: internalapi.rsprivatecloud.net
+  external_lb_vip_address: publicapi.rsprivatecloud.net
+  management_bridge: "br-mgmt"
+  tunnel_bridge: "br-ovs"
+  provider_networks:
+    - network:
+        container_bridge: "br-ovs"
+        container_type: "veth"
+        container_interface: "eth10"
+        ip_from_q: "tunnel"
+        type: "vxlan"
+        range: "4096:65535"
+        net_name: "vxlan"
+        group_binds:
+          - neutron_openvswitch_agent
+    - network:
+        container_bridge: "br-storage"
+        container_type: "veth"
+        container_interface: "eth2"
+        ip_from_q: "storage"
+        type: "raw"
+        group_binds:
+          - glance_api
+          - cinder_volume
+          - nova_compute
+          #- swift_proxy
+
+# OpenStack node definition for OpenStack API services located at conf.d/os-control-plane.yml
+
+# OpenStack compute node definition located at conf.d/os-computes.yml

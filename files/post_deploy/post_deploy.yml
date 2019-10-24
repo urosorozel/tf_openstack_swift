@@ -1,0 +1,212 @@
+- name: Post deploy
+  hosts: controller1
+  tasks:
+    - name: Update openrc for ironic API
+      lineinfile:
+        dest: /root/openrc
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+        - { regexp: '^# Define ironic API to support resource classes', line: '# Define ironic API to support resource classes' }
+        - { regexp: '^export IRONIC_API_VERSION=latest', line: 'export IRONIC_API_VERSION=latest' }
+        - { regexp: '^export OS_BAREMETAL_API_VERSION=1.56', line: 'export OS_BAREMETAL_API_VERSION=1.56' }
+        - { regexp: '^export OS_PLACEMENT_API_VERSION=1.18', line: 'export OS_BAREMETAL_API_VERSION=1.56' }
+
+    - name: Copy post deploy play to utility  nodes
+      copy:
+        src: post/{{ item }}
+        dest: /root/{{ item }}
+      with_items:
+        - enroll_ironic.py
+        - ironic_nodes.yml
+        - requirements.txt
+        - post_deploy.sh
+
+    - name: Add ironic network
+      os_network:
+        cloud: default
+        state: present
+        name: ironic-network
+        provider_physical_network: physnet2
+        provider_network_type: flat
+        external: true
+        validate_certs: False
+
+    - name: Add ironic subnet
+      os_subnet:
+        cloud: default
+        state: present
+        network_name: ironic-network
+        name: ironic-subnet
+        cidr: 172.23.208.0/22 
+        allocation_pool_start: 172.23.208.10
+        allocation_pool_end: 172.23.208.20
+        dns_nameservers:
+           - 1.1.1.1
+           - 8.8.8.8
+        validate_certs: False
+
+    - name: Update quotas
+      os_quota:
+        cloud: default
+        name: "admin"
+        validate_certs: False
+        cores: -1
+        fixed_ips: -1
+        floating_ips: -1
+        floatingip: -1
+        gigabytes: -1
+        injected_files: -1
+        instances: -1
+        key_pairs: -1
+        ram: -1
+        security_group_rule: -1
+        security_group: -1
+        volumes: -1
+
+
+    - name: Download cloud images
+      get_url:
+        url: "{{ item.value.url }}"
+        dest: "/root/{{ item.value.name }}"
+      with_dict: "{{ cloud_images }}"
+      tags:
+        - download-cloud
+
+    - name: Download ipa images
+      get_url:
+        url: "{{ ipa_images | json_query(item[0] + '.' + item[1] + '.url') }}"
+        dest: "/root/{{ ipa_images | json_query(item[0] + '.' + item[1] + '.name') }}"
+      with_nested:
+        - "{{ ipa_images }}"
+        - ['kernel', 'ramdisk']
+      tags:
+        - download-ipa
+
+    - name: Upload cloud images
+      os_image:
+        cloud: default
+        validate_certs: False
+        name: "{{ item.value.name }}"
+        container_format: bare
+        disk_format: qcow2
+        state: present
+        filename: "/root/{{ item.value.name }}"
+        properties:
+          cpu_arch: x86_64
+      with_dict: "{{ cloud_images }}"
+
+    - name: Remove cloud images
+      file:
+        path: "/root/{{ item.value.name }}"
+        state: absent
+      with_dict: "{{ cloud_images }}"
+
+    - name: Upload ipa images
+      os_image:
+        cloud: default
+        validate_certs: False
+        name: "{{ ipa_images | json_query(item[0] + '.' + item[1] + '.name') }}"
+        container_format: aki
+        disk_format: aki
+        state: present
+        filename: "/root/{{ ipa_images | json_query(item[0] + '.' + item[1] + '.name') }}"
+      with_nested:
+        - "{{ ipa_images }}"
+        - ['kernel', 'ramdisk']
+
+    - name: Remove ipa images
+      file:
+        path: "/root/{{ ipa_images | json_query(item[0] + '.' + item[1] + '.name') }}"
+        state: absent
+      with_nested:
+        - "{{ ipa_images }}"
+        - ['kernel', 'ramdisk']
+
+
+    - name: Create flavor with metadata for baremetal
+      os_nova_flavor:
+        cloud: default
+        validate_certs: False
+        state: present
+        name: baremetal-flavor
+        ram: 1024
+        vcpus: 1
+        disk: 10
+        extra_specs:
+          "baremetal": "true"
+          "resources:CUSTOM_BAREMETAL_SMALL": "1"
+
+    - name: Create SSH keypair
+      os_keypair:
+        validate_certs: False
+        cloud: default
+        state: present
+        name: osa_key
+      register: keypair
+
+    - debug: var=keypair
+    - name: Write private key
+      copy:
+        content: "{{ keypair.key.private_key }}"
+        dest: /root/.ssh/osa_key
+        mode: 0400
+      when: keypair.changed
+
+    - name: Write public key
+      copy:
+        content: "{{ keypair.key.public_key }}"
+        dest: /root/.ssh/osa_key.pub
+        mode: 0644
+      when: keypair.changed
+
+    - name: Gather facts about a previously created image named ubuntu_ramdisk
+      os_image_facts:
+        cloud: default
+        validate_certs: False
+        image: "{{ ipa_ramdisk_name }}"
+      register: ipa_ramdisk
+
+
+    - name: Gather facts about a previously created image named ubuntu_kernel
+      os_image_facts:
+        cloud: default
+        validate_certs: False
+        image: "{{ ipa_kernel_name }}"
+      register: ipa_kernel
+
+    - name: Output introspection rules
+      template:
+        src: post/rules.json.j2
+        dest: rules.json
+
+    - name: Purge and add introspection rules
+      shell: |
+        . /root/openrc
+        openstack baremetal introspection  rule purge
+        openstack baremetal introspection  rule import rules.json
+      args:
+        chdir: /root
+
+    - name: Make sure swift container has temp key added
+      command: |
+        swift  --os-username "service:glance" --os-password "{{ glance_service_password }}" --os-auth-url http://internalapi.rsprivatecloud.net:5000/v3 --os-identity-api-version 3 post -m "temp-url-key:{{ ironic_swift_temp_url_secret_key }}"
+
+    - name: Update all containers
+      hosts: ironic_api_container
+      tasks:
+        - name: Copy ipxe_config.template to ironic api container
+          copy:
+            src: /opt/openstack-ansible/playbooks/post/ipxe_config.template
+            dest: "/openstack/venvs/ironic-{{ venv_tag }}/lib/python2.7/site-packages/ironic/drivers/modules/ipxe_config.template"
+      tags:
+        - ipxe-config
+
+      #- name: Post deploy
+      #  hosts: utility_container[0]
+      #  tasks:
+      #    - name: Run post_deploy.sh
+      #      shell: |
+      #        bash post_deploy.sh
+      #      args:
+      #        chdir: /root/

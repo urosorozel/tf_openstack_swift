@@ -1,0 +1,7 @@
+---
+
+compute_hosts: &compute_hosts
+{% for compute in  groups['compute']  %}
+  compute{{loop.index}}:
+    ip: {{ lookup('dig', hostvars[compute].ansible_host) }} 
+{% endfor %}

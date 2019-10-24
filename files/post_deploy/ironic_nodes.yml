@@ -1,0 +1,29 @@
+ironic_nodes:
+- name: ironic1
+  hardware_type: {model: qemu, cpus: 1, memory_mb: 1024, local_gb: 10, cpu_arch: x86_64, mode: bios}
+  ipmi_interface:
+    ip_address: 172.23.208.1
+    ip_port: 2000
+    mac_address:
+    password: admin
+    username: admin
+  primary_interface:
+    interface_uuid:
+    mac_address: 52:54:00:b6:fc:01
+  node_uuid:
+  status: enabled
+  notes: BIOS node
+- name: ironic2
+  hardware_type: {model: qemu, cpus: 1, memory_mb: 1024, local_gb: 10, cpu_arch: x86_64, mode: uefi}
+  ipmi_interface:
+    ip_address: 172.23.208.1
+    ip_port: 2001
+    mac_address:
+    password: admin
+    username: admin
+  primary_interface:
+    interface_uuid:
+    mac_address: 52:54:00:b6:fc:02
+  node_uuid:
+  status: enabled
+  notes: UEFI node

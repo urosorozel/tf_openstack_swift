@@ -1,0 +1,74 @@
+---
+
+# Define haproxy service hosts independent from
+# Openstack service hosts
+haproxy_hosts: &infra_hosts
+{% for infra in  groups['infra']  %}
+  infra{{loop.index}}:
+    ip: {{ lookup('dig', hostvars[infra].ansible_host) }}
+    no_containers: true
+{% endfor %}
+
+log_hosts:
+  infra1:
+    ip: {{ lookup('dig', hostvars[groups["infra"][0]].ansible_host) }}
+    no_containers: true
+
+# Define Openstack services hosts on a shared
+# 3 hosts design
+controller_hosts: &controller_hosts
+{% for controller in  groups['controller']  %}
+  controller{{loop.index}}:
+    ip: {{ lookup('dig', hostvars[controller].ansible_host) }}
+    no_containers: true
+    container_vars:
+      nova_virt_type: ironic
+{% endfor %}
+
+repo-infra_hosts:
+  *controller_hosts
+
+shared-infra_hosts:
+  *controller_hosts
+
+os-infra_hosts:
+  *controller_hosts
+
+identity_hosts:
+  *controller_hosts
+
+storage-infra_hosts:
+  *controller_hosts
+
+database_hosts:
+  *controller_hosts
+
+image_hosts:
+  *controller_hosts
+
+compute-infra_hosts:
+  *controller_hosts
+
+orchestration_hosts:
+  *controller_hosts
+
+dashboard_hosts:
+  *controller_hosts
+
+ironic-infra_hosts:
+  *controller_hosts
+
+ironic-compute_hosts:
+  *controller_hosts
+
+ironic-inspector-infra_hosts:
+  *controller_hosts
+
+swift-proxy_hosts:
+  *controller_hosts
+
+swift_hosts:
+  *controller_hosts
+# Add neutron to existing control plane hosts
+network_hosts:
+  *controller_hosts

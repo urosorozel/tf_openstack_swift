@@ -1,0 +1,8 @@
+ruamel.yaml
+PyCryptodome
+python-keystoneclient
+markupsafe
+python-ironicclient
+python-openstackclient
+structlog
+osc-placement==1.3.0

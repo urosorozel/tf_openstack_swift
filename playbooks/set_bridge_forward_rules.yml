@@ -1,0 +1,42 @@
+- name: Add rules
+  hosts: localhost
+  vars:
+    global_host_bridge: bond0-network
+    global_ironic_bridge: ironic-network
+    iptable_rules:
+      - name: "Allow traffic forward between {{global_ironic_bridge}} and {{global_host_bridge}}"
+        in_interface: "{{global_ironic_bridge}}"
+        out_interface: "{{global_host_bridge}}"
+        source: 172.23.208.0/22
+        destination: 10.240.0.0/22
+        rule_num: 1
+      - name: "Allow traffic 169.254.0.0/16 between {{global_ironic_bridge}} and {{global_host_bridge}}"
+        in_interface: "{{global_ironic_bridge}}"
+        out_interface: "{{global_host_bridge}}"
+        source: 169.254.0.0/16
+        destination: 10.240.0.0/22
+        rule_num: 2
+      - name: "Allow traffic forward between {{global_host_bridge}} and {{global_ironic_bridge}}"
+        in_interface: "{{global_host_bridge}}"
+        out_interface: "{{global_ironic_bridge}}"
+        source: 10.240.0.0/22
+        destination: 172.23.208.0/22
+        rule_num: 3
+  tasks:
+
+  - name: Add rules
+    iptables:
+      action: insert
+      rule_num: "{{item.rule_num}}"
+      chain: FORWARD
+      out_interface: "{{item.out_interface}}"
+      in_interface: "{{item.in_interface}}"
+      source: "{{item.source}}"
+      destination: "{{item.destination}}"
+      jump: ACCEPT
+      comment: "{{item.name}}"
+    with_items: "{{iptable_rules}}"
+    tags:
+      - iptables
+
+ 

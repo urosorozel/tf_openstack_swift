@@ -1,0 +1,29 @@
+- name: Post deploy on ironic_conductor
+  hosts: ironic_conductor
+  tasks:
+  - name: Install UEFI package requirements
+    apt:
+      pkg: "{{item}}"
+      state: present
+    with_items:
+    - grub-efi-amd64-signed
+    - shim-signed
+
+  - name: Create grub directory
+    file:
+      path: /tftpboot/grub
+      state: directory
+
+  - name: Copy grub.cfg
+    copy:
+      src: grub.cfg
+      dest: /tftpboot/grub/grub.cfg
+
+  - name: Copy required files to tftpboot
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      remote_src: yes
+    with_items:
+      - { src: '/usr/lib/shim/shimx64.efi.signed', dest: '/tftpboot/bootx64.efi' }
+      - { src: '/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed', dest: '/tftpboot/grubx64.efi' }

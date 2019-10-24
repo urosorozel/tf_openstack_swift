@@ -1,0 +1,33 @@
+- name: Install deps
+  hosts: control-01.openstack.net
+  tasks:
+    - name: Copy post deploy play to infra1 node
+      copy:
+        src: files/post_deploy/post_deploy.yml
+        dest: /opt/openstack-ansible/playbooks/post_deploy.yml
+
+    - name: Create post dir
+      file:
+        path: /opt/openstack-ansible/playbooks/post
+        state: directory
+
+    - name: Copy post deploy play to infra1 node
+      copy:
+        src: ../files/post_deploy/{{ item }}
+        dest: /opt/openstack-ansible/playbooks/post/{{item}}
+      with_items:
+        - enroll_ironic.py
+        - ironic_nodes.yml
+        - requirements.txt
+        - post_deploy.sh
+        - ironic_uefi.yml
+        - grub.cfg
+        - rules.json.j2
+        # bug in ipxe_config template
+        - ipxe_config.template
+
+    - name: Run post_deploy.yml on infra1
+      shell: |
+        openstack-ansible post_deploy.yml
+      args:
+        chdir: /opt/openstack-ansible/playbooks/  

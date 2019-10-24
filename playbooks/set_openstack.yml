@@ -1,0 +1,100 @@
+- name: Install deps
+  hosts: controller
+  tasks:
+    - name: Install
+      apt:
+        name:
+          - gcc
+          - python-dev
+          - python-libvirt
+          - python3-libvirt
+          - python-guestfs
+          - python3-guestfs
+          - liberasurecode-dev #swift
+
+- name: Set Openstack
+  hosts: control-01.openstack.net
+  tasks:
+   - name: Clone repo
+     git:
+       repo: 'https://github.com/rcbops/openstack-ops.git'
+       dest: /opt/openstack-ops
+       version: master
+
+   - name: Set git creds store
+     git_config:
+       name: credential.helper
+       scope: global
+       value: 'store --file ~/.my-credentials'
+
+   - name: Add credentials token
+     command: git credential-store --file ~/.my-credentials store
+     args:
+       stdin: |
+         protocol=https
+         host=github.com
+         username={{ lookup('env', 'GIT_TOKEN') | default() }}
+         password={{ lookup('env', 'GIT_TOKEN') | default() }}
+
+   - name: Run deploy-rpco.sh
+     command: /opt/openstack-ops/scripts/deploy-rpco.sh
+     args:
+       stdin: |
+         demo
+       creates: /etc/ansible
+     environment:
+       OSA_RUN_PLAY: false
+       SETUP_ARA: true
+       OSA_RELEASE: "stable/stein"
+
+
+   - name: Add control nodes
+     template:
+       src: ../openstack/conf.d/os-control-plane.yml.j2
+       dest: /etc/openstack_deploy/conf.d/os-control-plane.yml
+
+   - name: Add swift nodes
+     template:
+       src: ../openstack/conf.d/os-swift.yml.j2
+       dest: /etc/openstack_deploy/conf.d/os-swift.yml
+
+   - name: Copy user_local_variables.yml
+     copy:
+       src: ../openstack/user_local_variables.yml
+       dest: /etc/openstack_deploy/user_local_variables.yml
+       remote_src: no
+
+   - name: Slurp hosts file
+     slurp:
+       src: /root/.ssh/id_rsa.pub
+     register: slurpfile
+
+
+- hosts: all
+  remote_user: ubuntu
+  tasks:
+   - name: Deploy SSH-Keys to remote host
+     authorized_key:
+       user: root
+       key: "{{ hostvars['control-01.openstack.net'].slurpfile['content'] | b64decode }}"
+
+- name: Set Openstack
+  hosts: control-01.openstack.net
+  tasks:
+
+   - name: Remove
+     file:
+       path: 
+        - /etc/openstack_deploy/conf.d/os-storage.yml
+        - /etc/openstack_deploy/conf.d/os-os-computes.yml
+       state: absent
+
+   - name: Run
+     command: /opt/openstack-ops/scripts/deploy-rpco.sh
+     args:
+       chdir: /root
+     environment:
+       OSA_RUN_PLAY: "true"
+       SKIP_PROMPTS: "true"
+       OSA_RELEASE: "stable/stein"
+   

@@ -1,0 +1,50 @@
+[{
+    "description": "Set IPMI driver_info if no credentials",
+    "actions": [
+        {"action": "set-attribute", "path": "driver", "value": "ipmi"},
+    {"action": "set-attribute", "path": "deploy_interface", "value": "direct" },
+        {"action": "set-attribute", "path": "driver_info/ipmi_username",
+         "value": "admin"},
+        {"action": "set-attribute", "path": "driver_info/ipmi_password",
+         "value": "admin"},
+    {"action": "set-attribute", "path": "name",
+         "value": "{data[inventory][system_vendor][manufacturer]}_{data[inventory][boot][pxe_interface]}"}
+    ],
+    "conditions": [
+        {"op": "is-empty", "field": "node://driver_info.ipmi_password"},
+        {"op": "is-empty", "field": "node://driver_info.ipmi_username"}
+    ]
+},
+{
+    "description": "Set IPMI ipmi_address if not QEMU",
+    "actions": [
+    {"action": "set-attribute", "path": "driver_info/ipmi_address",
+         "value": "{data[inventory][bmc_address]}"}
+    ],
+    "conditions": [
+        {"op": "ne", "field": "data://inventory.system_vendor.manufacturer", "value": "QEMU"}
+    ]
+},
+{
+    "description": "Set deploy info if not already set on node",
+    "actions": [
+        {"action": "set-attribute", "path": "driver_info/deploy_kernel",
+         "value": "{{ ipa_kernel.ansible_facts.openstack_image.id }}"},
+        {"action": "set-attribute", "path": "driver_info/rescue_kernel",
+         "value": "{{ ipa_kernel.ansible_facts.openstack_image.id }}"},
+        {"action": "set-attribute", "path": "driver_info/deploy_ramdisk",
+         "value": "{{ ipa_ramdisk.ansible_facts.openstack_image.id }}"},
+        {"action": "set-attribute", "path": "driver_info/rescue_ramdisk",
+         "value": "{{ ipa_ramdisk.ansible_facts.openstack_image.id }}"},
+        {"action": "set-attribute", "path": "resource_class", "value": "BAREMETAL_SMALL"},
+        {"action": "set-attribute", "path": "rescue_interface", "value": "agent"}
+    ],
+    "conditions": [
+        {"op": "is-empty", "field": "node://driver_info.deploy_ramdisk"},
+        {"op": "is-empty", "field": "node://driver_info.deploy_kernel"},
+    {"op": "is-empty", "field": "node://driver_info.rescue_kernel"},
+    {"op": "is-empty", "field": "node://driver_info.rescue_ramdisk"},
+    {"op": "is-empty", "field": "node://resource_class" },
+    {"op": "is-empty", "field": "node://resource_interface" }
+    ]
+}]

@@ -1,0 +1,292 @@
+- name: Post deploy
+  hosts: utility_container
+  vars:
+    boot_images:
+      coreos:
+        kernel:
+          url: "http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe-stable-rocky.vmlinuz"
+          name: "coreos_kernel"
+        ramdisk:
+          url: "http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe_image-oem-stable-rocky.cpio.gz"
+          name: "coreos_ramdisk"
+      tinyipa:
+        kernel:
+          url: "http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-rocky.vmlinuz"
+          name: "tinyipa_kernel"
+        ramdisk:
+          url: "http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-rocky.gz"
+          name: "tinyipa_ramdisk"
+  tasks:
+
+    - name: Update openrc for ironic API
+      lineinfile:
+        dest: /root/openrc
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+        - { regexp: '^# Define ironic API to support resource classes', line: '# Define ironic API to support resource classes' }
+        - { regexp: '^export IRONIC_API_VERSION=latest', line: 'export IRONIC_API_VERSION=latest' }
+        - { regexp: '^export OS_BAREMETAL_API_VERSION=1.46', line: 'export OS_BAREMETAL_API_VERSION=1.46' }
+
+    - name: Copy post deploy play to utility  nodes
+      copy:
+        src: post/{{ item }}
+        dest: /root/{{ item }}
+      with_items:
+        - enroll_ironic.py
+        - ironic_nodes.yml
+        - requirements.txt
+        - post_deploy.sh
+
+    - name: Instal requirements
+      apt:
+        name: 
+          - python-setuptools
+          - curl
+
+    - name: Remove PIP conf
+      file:
+        name: /root/.pip/pip.conf
+        state: absent
+
+    - name: Install pip
+      apt:
+        name: python-pip
+
+    - name: Install virtualenv
+      pip:
+        name: virtualenv
+        extra_args: --isolated
+
+    - name: pip install shade for ansible openstack module support
+      pip:
+        name: shade
+
+    - name: Install requirements for enroll script
+      pip:
+        requirements: /root/requirements.txt
+        virtualenv: /root/enroll
+        extra_args: --isolated
+
+- name: Post deploy on ironic_compute
+  hosts: ironic_compute
+  tasks:
+    - name: "Disable baremetal filters"
+      ini_file:
+        section: filter_scheduler
+        option: use_baremetal_filters
+        value: False
+        path: /etc/nova/nova.conf
+
+    - name: "Add AggregateInstanceExtraSpecsFilter"
+      ini_file:
+        section: filter_scheduler
+        option: enabled_filters
+        value: 'AggregateInstanceExtraSpecsFilter, RetryFilter, AvailabilityZoneFilter, RamFilter, AggregateRamFilter, ComputeFilter, AggregateCoreFilter, DiskFilter, AggregateDiskFilter, AggregateNumInstancesFilter, AggregateIoOpsFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter, NUMATopologyFilter'
+        path: /etc/nova/nova.conf
+
+    - name: "Restart nova scheduler"
+      service:
+        name: nova-scheduler
+        state: restarted
+
+    - name: "Restart nova compute"
+      service:
+        name: nova-compute
+        state: restarted
+
+- name: Post deploy on nova_scheduler_container
+  hosts: nova_scheduler_container
+  tasks:
+    - name: "Add AggregateInstanceExtraSpecsFilter"
+      ini_file:
+        section: filter_scheduler
+        option: enabled_filters
+        value: 'AggregateInstanceExtraSpecsFilter, RetryFilter, AvailabilityZoneFilter, RamFilter, AggregateRamFilter, ComputeFilter, AggregateCoreFilter, DiskFilter, AggregateDiskFilter, AggregateNumInstancesFilter, AggregateIoOpsFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter, NUMATopologyFilter'
+        path: /etc/nova/nova.conf
+
+    - name: "Restart nova scheduler"
+      service:
+        name: nova-scheduler
+        state: restarted
+
+- name: Post deploy
+  hosts: utility_container[0]
+  tags: ironic_aggregate
+  tasks:
+    - name: Get ironic hosts for baremetal server aggregate
+      shell: |
+        . /root/openrc;openstack host list| grep internal | grep ironic-compute | awk '{ print $2}'
+      args:
+        chdir: /root
+      register: ironic_hosts
+
+    - name: Add host aggregate for baremetal server
+      os_nova_host_aggregate:
+        cloud: default
+        state: present
+        name: baremetal-hosts
+        hosts:  "{{ ironic_hosts.stdout_lines }}"
+        validate_certs: False
+
+    - name: Add host aggregate for virtual servers
+      os_nova_host_aggregate:
+        cloud: default
+        state: present
+        name: virtual-hosts
+        hosts:
+          - aio1
+        validate_certs: False
+
+    - name: Add public network
+      os_network:
+        cloud: default
+        state: present
+        name: public-flat-network
+        provider_physical_network: flat
+        provider_network_type: flat
+        external: true
+        validate_certs: False
+
+    - name: Add ironic network
+      os_network:
+        cloud: default
+        state: present
+        name: ironic-network
+        provider_physical_network: ironic
+        provider_network_type: flat
+        external: true
+        validate_certs: False
+
+    - name: Add public flat subnet on br-vlan
+      os_subnet:
+        cloud: default
+        state: present
+        network_name: public-flat-network
+        name: public-flat-subnet
+        cidr: 172.29.248.0/22
+        allocation_pool_start: 172.29.248.150
+        allocation_pool_end: 172.29.248.200
+        dns_nameservers:
+           - 8.8.8.7
+           - 8.8.8.8
+        validate_certs: False
+
+    - name: Add ironic subnet
+      os_subnet:
+        cloud: default
+        state: present
+        network_name: ironic-network
+        name: ironic-subnet
+        cidr: 172.30.0.0/22
+        dns_nameservers:
+           - 192.168.122.100 
+        validate_certs: False
+
+
+    - name: Add private network
+      os_network:
+        cloud: default
+        state: present
+        name: private
+        #provider_physical_network: flat
+        #provider_network_type: flat
+        validate_certs: False
+
+
+    - name: Add private subnet
+      os_subnet:
+        cloud: default
+        state: present
+        network_name: private
+        name: private-subnet
+        cidr: 192.168.74.0/28
+        enable_dhcp: True
+        #gateway_ip: 192.168.74.1
+        dns_nameservers:
+           - 8.8.8.7
+           - 8.8.8.8
+        validate_certs: False
+        # router module fails on second run :/
+        # https://github.com/ansible/ansible/issues/29903
+        #register: subnet_added
+
+    - name: Add router to route private to public
+      os_router:
+        cloud: default
+        state: present
+        name: router1
+        project: admin
+        network: public-flat-network
+        validate_certs: False
+        external_fixed_ips:
+          - subnet: public-flat-subnet
+            ip: 172.29.248.101
+        interfaces:
+          - private-subnet
+      ignore_errors: yes
+      #when: subnet_added.changed
+
+#    - name: Get admin default SG id
+#      shell: |
+#        . /root/openrc;openstack security group list | grep $(openstack project list | grep admin | awk '{print $2}') | grep default | awk '{print $2}'
+#      register: sec_group
+    - name: Create SG for servers ssh/icmp
+      os_security_group:
+        cloud: default
+        validate_certs: False
+        state: present
+        name: server_ssh_icmp
+        description: security group for servers
+
+    - name: Add SSH rule to default SG
+      os_security_group_rule:
+        cloud: default
+        validate_certs: False
+        security_group: server_ssh_icmp
+        protocol: tcp
+        port_range_min: 22
+        port_range_max: 22
+
+    - name: Add ICMP rule to default SG
+      os_security_group_rule:
+        cloud: default
+        validate_certs: False
+        security_group: server_ssh_icmp
+        protocol: icmp
+        remote_ip_prefix: 0.0.0.0/0
+
+    - name: Create flavor with metadata for virtual
+      os_nova_flavor:
+        cloud: default
+        state: present
+        name: virtual-flavor
+        id: 200
+        ram: 256
+        vcpus: 1
+        disk: 1
+        extra_specs:
+          "baremetal": false
+
+    - name: Create flavor with metadata for baremetal
+      os_nova_flavor:
+        cloud: default
+        state: present
+        name: baremetal-flavor
+        id: 400
+        ram: 1024
+        vcpus: 1
+        disk: 10
+        extra_specs:
+          "baremetal": true
+          "resources:CUSTOM_BAREMETAL_SMALL": "1"
+
+
+- name: Post deploy
+  hosts: utility_container[0]
+  tasks:
+    - name: Run post_deploy.sh
+      shell: |
+        bash post_deploy.sh
+      args:
+        chdir: /root/

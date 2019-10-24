@@ -1,0 +1,17 @@
+- name: Set Openstack
+  hosts: control-01.openstack.net
+  tasks:
+   - name: Slurp hosts file
+     slurp:
+       src: /root/.ssh/id_rsa.pub
+     register: slurpfile
+   
+- name: Distribute SSH key
+  hosts: all
+  remote_user: ubuntu
+  tasks:
+     - name: Deploy SSH-Keys to remote host
+       authorized_key:
+         user: root
+         key: "{{ hostvars['control-01.openstack.net'].slurpfile['content'] | b64decode }}"
+         exclusive: true
