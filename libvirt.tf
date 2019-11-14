@@ -137,7 +137,7 @@ resource "libvirt_volume" "swift-disk" {
 
 # Define KVM domain to create
 resource "libvirt_domain" "control_nodes" {
-  name   = "${var.control_node_prefix}-${count.index}"
+  name   = "${format("${var.control_node_prefix}-%02d", count.index + 1)}"
   memory = "${var.control_node_memory}"
   vcpu   = "${var.control_node_cpu}"
 
@@ -297,7 +297,7 @@ resource "libvirt_domain" "ironic_nodes" {
   name   = "${format("${var.ironic_node_prefix}-%02d", count.index + 1)}"
   memory = "${var.ironic_node_memory}"
   vcpu   = "${var.ironic_node_cpu}"
-
+  #firmware = "/usr/share/OVMF/OVMF_CODE.fd"
   network_interface {
     network_name = libvirt_network.openstack_ironic_network.name
     mac = "${format("52:54:00:b6:fc:%02d", count.index + 1)}"

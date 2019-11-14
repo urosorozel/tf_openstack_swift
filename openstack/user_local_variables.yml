@@ -16,7 +16,7 @@ dummy: remove-me-upon-edit
 
 
 glance_default_store: swift
-ironic_swift_endpoint: "http://{{ internal_lb_vip_address }}:8080"
+#ironic_swift_endpoint: "http://{{ internal_lb_vip_address }}:8080"
 #nova_ceph_client: "{{ cinder_ceph_client }}"
 #nova_ceph_client_uuid: "{{ cinder_ceph_client_uuid }}"
 #nova_libvirt_images_rbd_pool: vms
@@ -49,6 +49,16 @@ neutron_provider_networks:
 #maas_env_identifier: cloud1
 #maas_fqdn_extension: ".{{ maas_env_identifier}}.{{ openstack_domain }}"
 #maas_raxdc: true
+
+# No need to reserver memory with ironic only
+nova_nova_conf_overrides:
+  DEFAULT:
+    debug: True
+    dhcp_domain: "{{ dhcp_domain }}"
+    use_cow_images: false
+    force_config_drive: false
+    reserved_host_memory_mb: 0
+
 haproxy_keepalived_external_vip_cidr: 10.240.0.10/32
 haproxy_keepalived_internal_vip_cidr: 172.29.236.10/32
 
@@ -67,7 +77,7 @@ ironic_inspector_ipa_tftpboot_image_dir: "/tftpboot_inspector"
 ironic_swift_endpoint: "http://{{ external_lb_vip_address }}:8080"
 ironic_neutron_cleaning_network_uuid: "ironic-network"
 ironic_neutron_provisioning_network_name: "ironic-network"
-ironic_inspector_pxe_append_params: "systemd.journald.forward_to_console=yes console=tty0 console=ttyS0,115200n8 ipa-insecure=1 ramdisk_size=3485760 ipa-inspection-collectors=default,extra-hardware,logs ipa-collect-lldp=1"
+ironic_inspector_pxe_append_params: "systemd.journald.forward_to_console=yes console=tty0 console=ttyS0,115200n8 ipa-insecure=1 ramdisk_size=3485760 ipa-inspection-collectors=default,extra-hardware,logs ipa-collect-lldp=1 ipa-inspection-benchmarks=cpu,mem,disk"
 ironic_pxe_append_params: "systemd.journald.forward_to_console=yes console=tty0 console=ttyS0,115200n8 ipa-insecure=1"
 
 # Enable ironic inspector
@@ -94,7 +104,6 @@ haproxy_extra_services:
       haproxy_service_enabled: "{{ groups['swift_proxy'] is defined and groups['swift_proxy'] | length > 0 }}"
 
 # No need to reserver memory with ironic only
-nova_reserved_host_memory_mb: 0
 default_ipa_image_server_ip: 10.184.227.134
 ipa_kernel_name: "ubuntu_kernel"
 ipa_ramdisk_name: "ubuntu_ramdisk"
@@ -103,6 +112,7 @@ ironic_inspector_ipa_kernel_url: "http://{{ipa_image_server_ip}}/ubuntu_kernel"
 ironic_inspector_ipa_kernel_sha256_url: "http://{{ipa_image_server_ip}}/ubuntu_kernel.sha256"
 ironic_inspector_ipa_initrd_url: "http://{{ipa_image_server_ip}}/ubuntu_ramdisk"
 ironic_inspector_ipa_initrd_sha256_url: "http://{{ipa_image_server_ip}}/ubuntu_ramdisk.sha256"
+ironic_inspector_tftpboot_dir: /tftpboot_inspector
 
 cloud_images:
   - bionic:

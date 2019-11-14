@@ -35,6 +35,8 @@
          host=github.com
          username={{ lookup('env', 'GIT_TOKEN') | default() }}
          password={{ lookup('env', 'GIT_TOKEN') | default() }}
+     environment:
+         GIT_TOKEN:
 
    - name: Run deploy-rpco.sh
      command: /opt/openstack-ops/scripts/deploy-rpco.sh
@@ -64,6 +66,15 @@
        dest: /etc/openstack_deploy/user_local_variables.yml
        remote_src: no
 
+   - name: insert/update HTML surrounded by custom markers after <body> line
+     blockinfile:
+       path: /etc/openstack_deploy/user_secrets.yml
+       marker: "# {mark} ANSIBLE MANAGED BLOCK"
+       insertafter: "EOF"
+       content: |
+            ironic_inspector_oslomsg_rpc_password:
+            ironic_inspector_swift_password:
+
    - name: Slurp hosts file
      slurp:
        src: /root/.ssh/id_rsa.pub
@@ -84,10 +95,11 @@
 
    - name: Remove
      file:
-       path: 
-        - /etc/openstack_deploy/conf.d/os-storage.yml
-        - /etc/openstack_deploy/conf.d/os-os-computes.yml
+       path: "{{ item }}"
        state: absent
+     with_items:
+      - /etc/openstack_deploy/conf.d/os-computes.yml
+      - /etc/openstack_deploy/conf.d/os-storage.yml
 
    - name: Run
      command: /opt/openstack-ops/scripts/deploy-rpco.sh

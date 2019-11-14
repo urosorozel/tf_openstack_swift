@@ -75,3 +75,14 @@ sudo ip link set dev veth_mgmt.100 up
 ip link show veth_mgmt.100
 sudo ip addr add 172.29.236.110/22 dev veth_mgmt.100
 ```
+* /etc/dhcp/dhclient.conf
+```
+send vendor-class-identifier = "PXEClient";
+```
+
+* Ignore all non pxe/inspector related requests
+```
+dhcp-ignore=tag:!PXEClient
+dhcp-match=set:PXEClient,60,PXEClient
+```
+

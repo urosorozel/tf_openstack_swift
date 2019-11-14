@@ -10,7 +10,7 @@
         - { regexp: '^# Define ironic API to support resource classes', line: '# Define ironic API to support resource classes' }
         - { regexp: '^export IRONIC_API_VERSION=latest', line: 'export IRONIC_API_VERSION=latest' }
         - { regexp: '^export OS_BAREMETAL_API_VERSION=1.56', line: 'export OS_BAREMETAL_API_VERSION=1.56' }
-        - { regexp: '^export OS_PLACEMENT_API_VERSION=1.18', line: 'export OS_BAREMETAL_API_VERSION=1.56' }
+        - { regexp: '^export OS_PLACEMENT_API_VERSION=1.18', line: 'export OS_PLACEMENT_API_VERSION=1.18' }
 
     - name: Copy post deploy play to utility  nodes
       copy:
@@ -124,17 +124,42 @@
         - ['kernel', 'ramdisk']
 
 
-    - name: Create flavor with metadata for baremetal
+    - name: Create flavor with metadata for baremetal BIOS
       os_nova_flavor:
         cloud: default
         validate_certs: False
         state: present
-        name: baremetal-flavor
-        ram: 1024
-        vcpus: 1
-        disk: 10
+        name: baremetal-flavor-bios
+        ram: 6144
+        vcpus: 2
+        disk: 20
         extra_specs:
-          "baremetal": "true"
+          "cpu_arch": "x86_64"
+          "resources:VCPU": 0
+          "resources:MEMORY_MB": 0
+          "resources:DISK_GB": 0
+          "capabilities:cpu_vt": "true"
+          "capabilities:cpu_hugepages": "true"
+          "capabilities:boot_mode": "bios"
+          "resources:CUSTOM_BAREMETAL_SMALL": "1"
+
+    - name: Create flavor with metadata for baremetal UEFI
+      os_nova_flavor:
+        cloud: default
+        validate_certs: False
+        state: present
+        name: baremetal-flavor-uefi
+        ram: 6144
+        vcpus: 2
+        disk: 20
+        extra_specs:
+          "cpu_arch": "x86_64"
+          "resources:VCPU": 0
+          "resources:MEMORY_MB": 0
+          "resources:DISK_GB": 0
+          "capabilities:cpu_vt": "true"
+          "capabilities:cpu_hugepages": "true"
+          "capabilities:boot_mode": "uefi"
           "resources:CUSTOM_BAREMETAL_SMALL": "1"
 
     - name: Create SSH keypair
@@ -192,15 +217,15 @@
       command: |
         swift  --os-username "service:glance" --os-password "{{ glance_service_password }}" --os-auth-url http://internalapi.rsprivatecloud.net:5000/v3 --os-identity-api-version 3 post -m "temp-url-key:{{ ironic_swift_temp_url_secret_key }}"
 
-    - name: Update all containers
-      hosts: ironic_api_container
-      tasks:
-        - name: Copy ipxe_config.template to ironic api container
-          copy:
-            src: /opt/openstack-ansible/playbooks/post/ipxe_config.template
-            dest: "/openstack/venvs/ironic-{{ venv_tag }}/lib/python2.7/site-packages/ironic/drivers/modules/ipxe_config.template"
-      tags:
-        - ipxe-config
+- name: Update all containers
+  hosts: ironic_api_container
+  tasks:
+    - name: Copy ipxe_config.template to ironic api container
+      copy:
+        src: /opt/openstack-ansible/playbooks/post/ipxe_config.template
+        dest: "/openstack/venvs/ironic-{{ venv_tag }}/lib/python2.7/site-packages/ironic/drivers/modules/ipxe_config.template"
+  tags:
+    - ipxe-config
 
       #- name: Post deploy
       #  hosts: utility_container[0]

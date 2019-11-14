@@ -3,7 +3,7 @@
   tasks:
     - name: Copy post deploy play to infra1 node
       copy:
-        src: files/post_deploy/post_deploy.yml
+        src: ../files/post_deploy/post_deploy.yml
         dest: /opt/openstack-ansible/playbooks/post_deploy.yml
 
     - name: Create post dir

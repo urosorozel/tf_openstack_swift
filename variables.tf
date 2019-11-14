@@ -83,7 +83,7 @@ variable "control_node_vlan" {
 
 variable "infra_node_prefix" {
     description = "Infra node prefix."
-    default  = "haproxy"
+    default  = "infra"
 }
 
 variable "infra_node_count" {
