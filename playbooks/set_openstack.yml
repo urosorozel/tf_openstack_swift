@@ -1,23 +1,36 @@
 - name: Install deps
-  hosts: controller
+  hosts: openstack-controller
   tasks:
-    - name: Install
-      apt:
-        name:
-          - gcc
-          - python-dev
-          - python-libvirt
-          - python3-libvirt
-          - python-guestfs
-          - python3-guestfs
-          - liberasurecode-dev #swift
+   - name: Install
+     apt:
+       name:
+         - gcc
+           #- python-dev
+           #- python-libvirt
+         - python3-dev
+         - python3-libvirt
+           #- python-guestfs
+         - python3-guestfs
+         - liberasurecode-dev #swift
+         - openvswitch-switch
+       update_cache: yes
+
+   - name: Add pxe OVS bridge
+     shell: |
+         ovs-vsctl add-br br-pxe
+         ovs-vsctl add-port br-pxe ens5
+     ignore_errors: yes
+
+   - name: Update
+     shell: |
+         netplan apply
 
 - name: Set Openstack
   hosts: control-01.openstack.net
   tasks:
    - name: Clone repo
      git:
-       repo: 'https://github.com/rcbops/openstack-ops.git'
+       repo: 'https://github.com/urosorozel/openstack-ops.git'
        dest: /opt/openstack-ops
        version: master
 
@@ -36,7 +49,7 @@
          username={{ lookup('env', 'GIT_TOKEN') | default() }}
          password={{ lookup('env', 'GIT_TOKEN') | default() }}
      environment:
-         GIT_TOKEN:
+       GIT_TOKEN:
 
    - name: Run deploy-rpco.sh
      command: /opt/openstack-ops/scripts/deploy-rpco.sh
@@ -46,25 +59,31 @@
        creates: /etc/ansible
      environment:
        OSA_RUN_PLAY: false
-       SETUP_ARA: true
-       OSA_RELEASE: "stable/stein"
+       SETUP_ARA: false
+       OSA_RELEASE: "{{ osa_release }}"
 
 
    - name: Add control nodes
      template:
        src: ../openstack/conf.d/os-control-plane.yml.j2
        dest: /etc/openstack_deploy/conf.d/os-control-plane.yml
+     tags:
+       - template
 
    - name: Add swift nodes
      template:
        src: ../openstack/conf.d/os-swift.yml.j2
        dest: /etc/openstack_deploy/conf.d/os-swift.yml
+     tags:
+       - template
 
    - name: Copy user_local_variables.yml
      copy:
        src: ../openstack/user_local_variables.yml
        dest: /etc/openstack_deploy/user_local_variables.yml
        remote_src: no
+     tags:
+       - template
 
    - name: insert/update HTML surrounded by custom markers after <body> line
      blockinfile:
@@ -100,6 +119,8 @@
      with_items:
       - /etc/openstack_deploy/conf.d/os-computes.yml
       - /etc/openstack_deploy/conf.d/os-storage.yml
+     tags:
+      - template
 
    - name: Run
      command: /opt/openstack-ops/scripts/deploy-rpco.sh
@@ -108,5 +129,6 @@
      environment:
        OSA_RUN_PLAY: "true"
        SKIP_PROMPTS: "true"
-       OSA_RELEASE: "stable/stein"
-   
+       OSA_RELEASE: "{{ osa_release }}"
+     tags:
+      - template

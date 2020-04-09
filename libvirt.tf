@@ -90,6 +90,7 @@ data "template_file" "control_network_config" {
     br_ovs = cidrhost(var.control_node_vlan.br_ovs, count.index + 1 + var.control_node_vlan.ip_offset)
     br_storage = cidrhost(var.control_node_vlan.br_storage, count.index + 1 + var.control_node_vlan.ip_offset)
     br_repl = cidrhost(var.control_node_vlan.br_repl, count.index + 1 + var.control_node_vlan.ip_offset)
+    br_pxe = cidrhost(var.control_node_vlan.br_pxe, count.index + 1 + var.control_node_vlan.ip_offset)
   }
 }
 
@@ -218,13 +219,10 @@ data "template_file" "infra_meta_data" {
 
 data "template_file" "bond1_network_config" {
   count    = "${var.infra_node_count}"
-  template = "${file("${path.module}/cloudinit/network_config.yml")}"
+  template = "${file("${path.module}/cloudinit/infra_network_config.yml")}"
 
   vars = {
     br_mgmt = cidrhost(var.infra_node_vlan.br_mgmt, count.index + 1 + var.infra_node_vlan.ip_offset)
-    br_ovs = cidrhost(var.infra_node_vlan.br_ovs, count.index + 1 + var.infra_node_vlan.ip_offset)
-    br_storage = cidrhost(var.infra_node_vlan.br_storage, count.index + 1 + var.infra_node_vlan.ip_offset)
-    br_repl = cidrhost(var.infra_node_vlan.br_repl, count.index + 1 + var.infra_node_vlan.ip_offset)
   }
 }
 
@@ -334,9 +332,95 @@ resource "libvirt_domain" "ironic_nodes" {
 }
 # END IRONIC
 
+resource "libvirt_volume" "logging-deploy-image" {
+  name = "${var.logging_node_prefix}-${count.index}.qcow2"
+  base_volume_id = libvirt_volume.ubuntu-image.id
+  pool = libvirt_pool.openstack_pool.name
+  size = "${var.logging_node_disk}"
+  format = "qcow2"
+  count = "${var.logging_node_count}"
+  depends_on = [libvirt_pool.openstack_pool]
+}
+
+data "template_file" "logging_user_data" {
+  template = "${file("${path.module}/cloudinit/cloud_init.yml")}"
+
+  vars = {
+    user_name          = "ubuntu"
+    ssh_authorized_key = "${var.ssh_authorized_key}"
+  }
+}
+
+data "template_file" "logging_meta_data" {
+  count    = "${var.logging_node_count}"
+  template = "${file("${path.module}/cloudinit/meta_data.yml")}"
+
+  vars = {
+    hostname = "${format("${var.logging_node_prefix}-%02d", count.index + 1)}"
+  }
+}
+
+data "template_file" "logging_network_config" {
+  count    = "${var.logging_node_count}"
+  template = "${file("${path.module}/cloudinit/infra_network_config.yml")}"
+
+  vars = {
+    br_mgmt = cidrhost(var.logging_node_vlan.br_mgmt, count.index + 1 + var.logging_node_vlan.ip_offset)
+  }
+}
+
+
+resource "libvirt_cloudinit_disk" "logging_commoninit" {
+  count          = "${var.logging_node_count}"
+  name           = "${format("${var.logging_node_prefix}-seed-%01d.iso", count.index + 1)}"
+  pool           = libvirt_pool.openstack_pool.name
+  user_data      = "${data.template_file.logging_user_data.rendered}"
+  meta_data      = "${data.template_file.logging_meta_data.*.rendered[count.index]}"
+  network_config = "${data.template_file.logging_network_config.*.rendered[count.index]}"
+}
+
+# Define KVM domain to create
+resource "libvirt_domain" "logging_nodes" {
+  name   = "${format("${var.logging_node_prefix}-%02d", count.index + 1)}"
+  memory = "${var.logging_node_memory}"
+  vcpu   = "${var.logging_node_cpu}"
+
+  network_interface {
+    network_name = libvirt_network.openstack_bond0_network.name
+    wait_for_lease = false
+  }
+
+  disk {
+    volume_id = "${element(libvirt_volume.logging-deploy-image,count.index).id}"
+  }
+
+  cloudinit = "${element(libvirt_cloudinit_disk.logging_commoninit,count.index).id}"
+
+  console {
+    type = "pty"
+    target_type = "serial"
+    target_port = "0"
+  }
+
+  console {
+      type        = "pty"
+      target_type = "virtio"
+      target_port = "1"
+  }
+
+  graphics {
+    type = "vnc"
+    listen_type = "address"
+    listen_address = "10.184.227.238"
+    autoport = true
+  }
+  count = "${var.logging_node_count}"
+  depends_on = [libvirt_pool.openstack_pool,libvirt_network.openstack_bond0_network,libvirt_volume.logging-deploy-image]
+}
+
 resource "ansible_host" "control_nodes" {
     inventory_hostname = "${format("${var.control_node_prefix}-%02d", count.index + 1)}.${var.domain_name}"
-    groups = ["controller","openstack-cluster","master"]
+    groups = ["openstack-controller","openstack-cluster","master"]
     vars = {
         ansible_user = "ubuntu"
         #ansible_host = "${element(libvirt_domain.control_nodes,count.index).network_interface.0.addresses.0}"
@@ -361,8 +445,18 @@ resource "ansible_host" "infra_nodes" {
     depends_on = [libvirt_domain.infra_nodes]
 }
 
-
-
+resource "ansible_host" "logging_nodes" {
+    inventory_hostname = "${format("${var.logging_node_prefix}-%02d", count.index + 1)}.${var.domain_name}"
+    groups = ["openstack-cluster","logging"]
+    vars = {
+        ansible_user = "ubuntu"
+        #ansible_host = "${element(libvirt_domain.logging_nodes,count.index).network_interface.0.addresses.0}"
+        ansible_host = "${format("${var.logging_node_prefix}-%02d", count.index + 1)}.${var.domain_name}"
+        #access_ip = "${element(libvirt_domain.logging_nodes,count.index).network_interface.0.addresses.0}"
+    }
+    count = "${var.logging_node_count}"
+    depends_on = [libvirt_domain.logging_nodes]
+}
 #output "control_ips" {
 #  value = libvirt_domain.control_nodes.*.network_interface.0.addresses
 #}

@@ -1,0 +1,27 @@
+version: 2
+ethernets:
+  ens3:
+    match:
+        name: ens3
+    set-name: ens3
+    dhcp4: false
+bonds:
+  bond0:
+    interfaces: [ens3]
+    dhcp4: true
+    mtu: 9000
+    parameters:
+      mode: active-backup
+      min-links: 1
+bridges:
+  br-mgmt:
+    interfaces: [mgmt-vlan]
+    dhcp4: false
+    addresses:
+            - ${br_mgmt}/22
+    parameters:
+            stp: true
+vlans:
+  mgmt-vlan:
+    id: 100
+    link: bond0

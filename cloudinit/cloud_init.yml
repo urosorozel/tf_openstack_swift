@@ -28,6 +28,3 @@ users:
   - name: root
     ssh_authorized_keys:
       - ${ssh_authorized_key}
-
-packages:
- - python

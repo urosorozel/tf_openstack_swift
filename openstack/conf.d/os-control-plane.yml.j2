@@ -10,14 +10,14 @@ haproxy_hosts: &infra_hosts
 {% endfor %}
 
 log_hosts:
-  infra1:
-    ip: {{ lookup('dig', hostvars[groups["infra"][0]].ansible_host) }}
+  logging1:
+    ip: {{ lookup('dig', hostvars[groups["logging"][0]].ansible_host) }}
     no_containers: true
 
 # Define Openstack services hosts on a shared
 # 3 hosts design
 controller_hosts: &controller_hosts
-{% for controller in  groups['controller']  %}
+{% for controller in  groups['openstack-controller']  %}
   controller{{loop.index}}:
     ip: {{ lookup('dig', hostvars[controller].ansible_host) }}
     no_containers: true
@@ -61,7 +61,7 @@ ironic-infra_hosts:
 ironic-compute_hosts:
   *controller_hosts
 
-ironic-inspector-infra_hosts:
+ironic-inspector_hosts:
   *controller_hosts
 
 swift-proxy_hosts:

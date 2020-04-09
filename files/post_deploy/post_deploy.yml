@@ -1,3 +1,38 @@
+- name: Fixe Swift
+  hosts: controller*
+  tasks:
+    - name: Add missing sections
+      ini_file:
+        path: "/etc/swift/{{ item }}-server/{{ item }}-server.conf"
+        section: "{{ item }}-auditor"
+        option: log_name
+        value: "{{ item }}"
+        path: "/etc/swift/{{ item }}-server/{{ item }}-server.conf"
+      with_items:
+        - account
+        - object
+        - container
+
+    - name: Update fallocate_reserve value
+      ini_file:
+        path: "/etc/swift/{{ item }}-server/{{ item }}-server.conf"
+        section: "DEFAULT"
+        option: fallocate_reserve
+        value: "1%"
+        path: "/etc/swift/{{ item }}-server/{{ item }}-server.conf"
+      with_items:
+        - account
+        - container
+
+    - name: Restart services
+      service:
+        name: "swift-{{ item }}-server"
+        state: restarted
+      with_items:
+        - account
+        - object
+        - container
+
 - name: Post deploy
   hosts: controller1
   tasks:
@@ -9,8 +44,8 @@
       with_items:
         - { regexp: '^# Define ironic API to support resource classes', line: '# Define ironic API to support resource classes' }
         - { regexp: '^export IRONIC_API_VERSION=latest', line: 'export IRONIC_API_VERSION=latest' }
-        - { regexp: '^export OS_BAREMETAL_API_VERSION=1.56', line: 'export OS_BAREMETAL_API_VERSION=1.56' }
-        - { regexp: '^export OS_PLACEMENT_API_VERSION=1.18', line: 'export OS_PLACEMENT_API_VERSION=1.18' }
+        - { regexp: '^export OS_BAREMETAL_API_VERSION=1.58', line: 'export OS_BAREMETAL_API_VERSION=1.58' }
+        - { regexp: '^export OS_PLACEMENT_API_VERSION=1.22', line: 'export OS_PLACEMENT_API_VERSION=1.22' }
 
     - name: Copy post deploy play to utility  nodes
       copy:
@@ -40,7 +75,7 @@
         name: ironic-subnet
         cidr: 172.23.208.0/22 
         allocation_pool_start: 172.23.208.10
-        allocation_pool_end: 172.23.208.20
+        allocation_pool_end: 172.23.210.254
         dns_nameservers:
            - 1.1.1.1
            - 8.8.8.8
@@ -216,6 +251,31 @@
     - name: Make sure swift container has temp key added
       command: |
         swift  --os-username "service:glance" --os-password "{{ glance_service_password }}" --os-auth-url http://internalapi.rsprivatecloud.net:5000/v3 --os-identity-api-version 3 post -m "temp-url-key:{{ ironic_swift_temp_url_secret_key }}"
+
+    - name: Include vars
+      include_vars:
+        file: /root/ironic_nodes.yml
+
+    - name: Enroll Ironic nodes
+      os_ironic:
+        driver: "ipmitool"
+        properties:
+          cpus: "{{ item.hardware_type.cpus }}"
+          cpu_arch: "{{ item.hardware_type.cpu_arch }}"
+          ram: "{{ item.hardware_type.memory_mb }}"
+          disk_size: "{{ item.hardware_type.local_gb }}"
+          capabilities: "boot_option:{{ item.hardware_type.mode }}"
+        nics:
+          - mac: "{{ item.primary_interface.mac_address }}"
+        driver_info:
+          power:
+            ipmi_address: "{{ item.ipmi_interface.ip_address }}"
+            ipmi_port: "{{ item.ipmi_interface.ip_port }}"
+            ipmi_username: "{{ item.ipmi_interface.username }}"
+            ipmi_password: "{{ item.ipmi_interface.password }}"
+      with_items: ironic_nodes
+      tags:
+       - enroll
 
 - name: Update all containers
   hosts: ironic_api_container

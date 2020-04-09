@@ -5,16 +5,26 @@ ethernets:
         name: ens3
     set-name: ens3
     dhcp4: false
+  %{ if br_repl != "" }
   ens4:
     match:
         name: ens4
     set-name: ens4
     dhcp4: false
+  %{ endif }
+  %{ if br_pxe != "" }
   ens5:
     match:
         name: ens5
     set-name: ens5
     dhcp4: false
+  %{ endif }
+  br-pxe:
+    match:
+      name: br-pxe
+    addresses:
+      - ${br_pxe}/22
+    optional: true
 bonds:
   bond0:
     interfaces: [ens3]
@@ -23,7 +33,7 @@ bonds:
     parameters:
       mode: active-backup
       min-links: 1
-      
+  %{ if br_repl != "" }
   bond1:
     interfaces: [ens4]
     dhcp4: false
@@ -31,14 +41,8 @@ bonds:
     parameters:
       mode: active-backup
       min-links: 1
-      
+  %{ endif }
 bridges:
-        #  br-host:
-        #    interfaces: [bond0]
-        #    dhcp4: true
-        #    parameters:
-        #            stp: true
-
   br-mgmt:
     interfaces: [mgmt-vlan]
     dhcp4: false

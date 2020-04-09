@@ -76,6 +76,7 @@ variable "control_node_vlan" {
     br_ovs = "172.29.240.10/22"
     br_storage = "172.29.244.10/22"
     br_repl = "172.29.248.10/22"
+    br_pxe = "172.23.208.10/22"
     ip_offset = 10 
     netmask = 22
   }
@@ -111,9 +112,6 @@ variable "infra_node_vlan" {
 
   default = {
     br_mgmt = "172.29.236.10/22"
-    br_ovs = "172.29.240.10/22"
-    br_storage = "172.29.244.10/22"
-    br_repl = "172.29.248.10/22"
     ip_offset = 16
     netmask = 22
   }
@@ -142,6 +140,41 @@ variable "ironic_node_memory" {
 variable "ironic_node_disk" {
     description = "Ironic node disk size."
     default  = "21474836480"
+}
+
+variable "logging_node_prefix" {
+    description = "Infra node prefix."
+    default  = "logging"
+}
+
+variable "logging_node_count" {
+    description = "The number of logging nodes."
+    default  = "1"
+}
+
+variable "logging_node_cpu" {
+    description = "Infra node cpu's."
+    default  = "2"
+}
+
+variable "logging_node_memory" {
+    description = "Infra node memory."
+    default  = "4096"
+}
+
+variable "logging_node_disk" {
+    description = "Infranode disk size."
+    default  = "21474836480"
+}
+
+variable "logging_node_vlan" {
+  type = "map"
+
+  default = {
+    br_mgmt = "172.29.236.10/22"
+    ip_offset = 18
+    netmask = 22
+  }
 }
 
 variable "ssh_authorized_key" {

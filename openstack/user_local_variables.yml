@@ -21,14 +21,22 @@ glance_default_store: swift
 #nova_ceph_client_uuid: "{{ cinder_ceph_client_uuid }}"
 #nova_libvirt_images_rbd_pool: vms
 
-nova_novncproxy_git_install_branch: '8c2866df3619e49d629b5f98c20d27a7c72d102a'
+#nova_novncproxy_git_install_branch: '8c2866df3619e49d629b5f98c20d27a7c72d102a'
 
 neutron_provider_networks:
   network_flat_networks: "*"
-  network_types: "vxlan,vlan"
+  network_types: "vlan, flat"
   network_vlan_ranges: "physnet1:205:205,physnet1:208:212"
-  network_vxlan_ranges: "4096:65535"
+  #network_vxlan_ranges: "4096:65535"
   network_mappings: "physnet1:br-ex,physnet2:br-pxe"
+
+neutron_plugin_base:
+   - router
+
+neutron_plugin_type: ml2.ovs
+
+neutron_plugin_types:
+   - ml2.baremetal
 #haproxy_extra_services:
 #  - service:
 #      haproxy_service_name: ceph_rgw
@@ -37,7 +45,7 @@ neutron_provider_networks:
 #      haproxy_balance_type: http
 #      haproxy_backend_options:
 #        - "httpchk HEAD /"
-
+#
 #glance_default_store: rbd
 
 #nova_ceph_client: "{{ cinder_ceph_client }}"
@@ -69,7 +77,7 @@ haproxy_keepalived_internal_interface: br-mgmt
 apply_security_hardening: false
 openstack_domain: cloud01.cloud.skypod.io
 
-# uros
+# Ebable swift temp url
 ironic_enable_web_server_for_images: false
 # ironic_tftp_server_address: "{{ container_networks.ironic_address.address }}"
 # separate ironic tftp from inspector
@@ -102,9 +110,18 @@ haproxy_extra_services:
       haproxy_backend_options:
         - "httpchk GET /healthcheck HTTP/1.0\\r\\nUser-agent:\\ osa-haproxy-healthcheck"
       haproxy_service_enabled: "{{ groups['swift_proxy'] is defined and groups['swift_proxy'] | length > 0 }}"
+  - service:
+      haproxy_service_name: ironic_inspector
+      haproxy_backend_nodes: "{{ groups['ironic_inspector'] | default([]) }}"
+      haproxy_ssl: false
+      haproxy_port: 5050
+      haproxy_balance_type: http
+      haproxy_backend_options:
+        - "httpchk GET / HTTP/1.0\\r\\nUser-agent:\\ osa-haproxy-healthcheck"
+      haproxy_service_enabled: "{{ groups['ironic_inspector'] is defined and groups['ironic_inspector'] | length > 0 }}"
 
 # No need to reserver memory with ironic only
-default_ipa_image_server_ip: 10.184.227.134
+default_ipa_image_server_ip: 10.184.227.94
 ipa_kernel_name: "ubuntu_kernel"
 ipa_ramdisk_name: "ubuntu_ramdisk"
 ipa_image_server_ip: "{{ lookup('env', 'IPA_IMAGE_SERVER') | default(default_ipa_image_server_ip, True) }}"
@@ -113,6 +130,8 @@ ironic_inspector_ipa_kernel_sha256_url: "http://{{ipa_image_server_ip}}/ubuntu_k
 ironic_inspector_ipa_initrd_url: "http://{{ipa_image_server_ip}}/ubuntu_ramdisk"
 ironic_inspector_ipa_initrd_sha256_url: "http://{{ipa_image_server_ip}}/ubuntu_ramdisk.sha256"
 ironic_inspector_tftpboot_dir: /tftpboot_inspector
+ironic_pxe_config_template: "/etc/ironic/ipxe_config.template"
+ironic_uefi_pxe_config_template: "/etc/ironic/ipxe_config.template"
 
 cloud_images:
   - bionic:
@@ -124,12 +143,12 @@ cloud_images:
   - cirros:
      name: "cirros-0.3.6"
      url: "http://download.cirros-cloud.net/0.3.6/cirros-0.3.6-x86_64-disk.img"
-  - rpc_bionic:
-     name: "rpc-bionic-18.04.2"
-     url: "http://{{ipa_image_server_ip}}/rpc-bionic-18.04.2.qcow2"
-  - rpc_xenial:
-     name: "rpc-xenial-16.04.6"
-     url: "http://{{ipa_image_server_ip}}/rpc-xenial-16.04.6.qcow2"
+     #  - rpc_bionic:
+     #     name: "rpc-bionic-18.04.2"
+     #     url: "http://{{ipa_image_server_ip}}/rpc-bionic-18.04.2.qcow2"
+     #  - rpc_xenial:
+     #     name: "rpc-xenial-16.04.6"
+     #     url: "http://{{ipa_image_server_ip}}/rpc-xenial-16.04.6.qcow2"
 ipa_images:
 #   coreos:
 #     kernel:
@@ -152,3 +171,11 @@ ipa_images:
     ramdisk:
       name: "ubuntu_ramdisk"
       url: "http://{{ipa_image_server_ip}}/ubuntu_ramdisk"
+
+
+# HAPROXY
+haproxy_bind_on_non_local: True
+
+# swift
+#swift_fallocate_reserve: "1%%" 
+journald_remote_enabled: true

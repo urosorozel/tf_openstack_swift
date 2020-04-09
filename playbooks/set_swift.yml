@@ -1,6 +1,6 @@
 ---
 - name: Setup Minimal Swift
-  hosts: controller
+  hosts: openstack-controller
   remote_user: root
   vars:
     Swift_mode: physical
