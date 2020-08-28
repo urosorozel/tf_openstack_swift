@@ -28,6 +28,11 @@
 - name: Set Openstack
   hosts: control-01.openstack.net
   tasks:
+   - name: Install openstacksdk
+     apt:
+       name:
+          - python3-openstacksdk
+
    - name: Clone repo
      git:
        repo: 'https://github.com/urosorozel/openstack-ops.git'

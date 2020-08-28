@@ -24,7 +24,7 @@ glance_default_store: swift
 #nova_novncproxy_git_install_branch: '8c2866df3619e49d629b5f98c20d27a7c72d102a'
 
 neutron_provider_networks:
-  network_flat_networks: "*"
+  network_flat_networks: "physnet2"
   network_types: "vlan, flat"
   network_vlan_ranges: "physnet1:205:205,physnet1:208:212"
   #network_vxlan_ranges: "4096:65535"
@@ -33,7 +33,7 @@ neutron_provider_networks:
 neutron_plugin_base:
    - router
 
-neutron_plugin_type: ml2.ovs
+neutron_plugin_type: ml2.ovs.dvr
 
 neutron_plugin_types:
    - ml2.baremetal
@@ -85,7 +85,8 @@ ironic_inspector_ipa_tftpboot_image_dir: "/tftpboot_inspector"
 ironic_swift_endpoint: "http://{{ external_lb_vip_address }}:8080"
 ironic_neutron_cleaning_network_uuid: "ironic-network"
 ironic_neutron_provisioning_network_name: "ironic-network"
-ironic_inspector_pxe_append_params: "systemd.journald.forward_to_console=yes console=tty0 console=ttyS0,115200n8 ipa-insecure=1 ramdisk_size=3485760 ipa-inspection-collectors=default,extra-hardware,logs ipa-collect-lldp=1 ipa-inspection-benchmarks=cpu,mem,disk"
+ironic_inspector_pxe_append_params: "systemd.journald.forward_to_console=yes console=tty0 console=ttyS0,115200n8 ipa-insecure=1 ramdisk_size=3485760 ipa-inspection-collectors=default,extra-hardware,logs"
+#ipa-collect-lldp=1 ipa-inspection-benchmarks=cpu,mem,disk"
 ironic_pxe_append_params: "systemd.journald.forward_to_console=yes console=tty0 console=ttyS0,115200n8 ipa-insecure=1"
 
 # Enable ironic inspector
@@ -179,3 +180,5 @@ haproxy_bind_on_non_local: True
 # swift
 #swift_fallocate_reserve: "1%%" 
 journald_remote_enabled: true
+# power state sync
+ironic_sync_power_state_interval: 300

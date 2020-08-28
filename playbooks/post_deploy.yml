@@ -23,11 +23,9 @@
         - ironic_uefi.yml
         - grub.cfg
         - rules.json.j2
-        # bug in ipxe_config template
-        - ipxe_config.template
 
     - name: Run post_deploy.yml on infra1
       shell: |
-        openstack-ansible post_deploy.yml
+        openstack-ansible post_deploy.yml -e ansible_python_interpreter=/usr/bin/python3
       args:
         chdir: /opt/openstack-ansible/playbooks/  

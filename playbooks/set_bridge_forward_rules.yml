@@ -3,6 +3,7 @@
   vars:
     global_host_bridge: bond0-network
     global_ironic_bridge: ironic-network
+    global_ironic_vlan: ironic-gw-int0
     iptable_rules:
       - name: "Allow traffic forward between {{global_ironic_bridge}} and {{global_host_bridge}}"
         in_interface: "{{global_ironic_bridge}}"
@@ -22,6 +23,12 @@
         source: 10.240.0.0/22
         destination: 172.23.208.0/22
         rule_num: 3
+      - name: "Allow traffic forward between {{global_ironic_vlan}} and {{global_host_bridge}}"
+        in_interface: "{{global_ironic_vlan}}"
+        out_interface: "{{global_host_bridge}}"
+        source: 192.168.0.0/24
+        destination: 10.240.0.0/22
+        rule_num: 1
   tasks:
 
   - name: Add rules
