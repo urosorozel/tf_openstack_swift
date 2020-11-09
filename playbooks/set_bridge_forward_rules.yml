@@ -4,6 +4,8 @@
     global_host_bridge: bond0-network
     global_ironic_bridge: ironic-network
     global_ironic_vlan: ironic-gw-int0
+    global_remote_bridge: virbr1
+    global_relay_bridge: ironic-network2
     iptable_rules:
       - name: "Allow traffic forward between {{global_ironic_bridge}} and {{global_host_bridge}}"
         in_interface: "{{global_ironic_bridge}}"
@@ -28,6 +30,24 @@
         out_interface: "{{global_host_bridge}}"
         source: 192.168.0.0/24
         destination: 10.240.0.0/22
+        rule_num: 4
+      - name: "Allow traffic forward between {{global_remote_bridge}} and {{global_host_bridge}}"
+        in_interface: "{{global_remote_bridge}}"
+        out_interface: "{{global_host_bridge}}"
+        source: 192.168.123.0/24
+        destination: 10.240.0.0/22
+        rule_num: 5
+      - name: "Allow traffic forward between {{global_relay_bridge}} and {{global_host_bridge}}"
+        in_interface: "{{global_relay_bridge}}"
+        out_interface: "{{global_host_bridge}}"
+        source: 192.168.10.0/24
+        destination: 10.240.0.0/22
+        rule_num: 6
+      - name: "Allow traffic forward between {{global_host_bridge}} and {{global_relay_bridge}}"
+        in_interface: "{{global_host_bridge}}"
+        out_interface: "{{global_relay_bridge}}"
+        source: 10.240.0.0/22
+        destination: 192.168.10.0/24
         rule_num: 1
   tasks:
 
