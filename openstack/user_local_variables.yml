@@ -67,6 +67,22 @@ nova_nova_conf_overrides:
     force_config_drive: false
     reserved_host_memory_mb: 0
 
+# https://github.com/openstack/openstack-ansible-os_nova/commit/4f993fdd8e226f730378cc7ad25e09a3cb8d9c18
+# string list issue
+nova_scheduler_default_filters:
+  - RetryFilter
+  - AvailabilityZoneFilter
+  - ComputeFilter
+  - AggregateCoreFilter
+  - AggregateNumInstancesFilter
+  - AggregateIoOpsFilter
+  - ComputeCapabilitiesFilter
+  - ImagePropertiesFilter
+  - ServerGroupAntiAffinityFilter
+  - ServerGroupAffinityFilter
+  - NUMATopologyFilter
+nova_scheduler_extra_filters: []
+
 haproxy_keepalived_external_vip_cidr: 10.240.0.10/32
 haproxy_keepalived_internal_vip_cidr: 172.29.236.10/32
 
