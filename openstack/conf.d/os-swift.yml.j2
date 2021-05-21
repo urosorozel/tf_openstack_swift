@@ -1,23 +1,16 @@
 ---
-
 global_overrides:
   swift:
-    part_power: 20
-    weight: 100
-    min_part_hours: 1
-    repl_number: 3
-    storage_network: 'br-storage'
-    #replication_network: 'br-repl' #Larger deployments separate the replication network into br-repl which is bound to bond1
+    part_power: 8
+    storage_network: br-storage
+    replication_network: br-storage
     drives:
-      - name: vdb
-      - name: vdc
-      - name: vdd
-    mount_point: /srv/nodes/
-    account:
-    container:
+      - name: swift1.img
+      - name: swift2.img
+      - name: swift3.img
+    mount_point: /srv
     storage_policies:
       - policy:
           name: default
           index: 0
           default: True
-

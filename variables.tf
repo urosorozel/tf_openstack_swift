@@ -1,21 +1,16 @@
 variable "domain_name" {
     description = "Openstack hosts domain name"
-    default  = "openstack.net"
+    default  = "openstack-aio.net"
 }
 
-variable "openstack_bond0_network" {
-    description = "Subnet cidr for openstack hosts"
-    default  = "10.240.0.0/22"
+variable "openstack_aio_network" {
+    description = "Subnet cidr for openstack_aio hosts"
+    default  = "10.200.0.0/24"
 }
 
-variable "openstack_ironic_network" {
-    description = "Subnet cidr for openstack ironic hosts"
-    default = "172.23.208.0/22"
-}
-
-variable "openstack_bond1_network" {
-    description = "Subnet cidr for openstack compute"
-    default = "192.168.236.0/22"
+variable "openstack_aio_ironic_network" {
+    description = "Subnet cidr for openstack_aio ironic hosts"
+    default = "172.20.200.0/22"
 }
 
 variable "storage_pool" {
@@ -25,7 +20,7 @@ variable "storage_pool" {
 
 variable "storage_pool_name" {
     description = "Storage pool name"
-    default  = "openstack_pool"
+    default  = "openstack_aio_pool"
 } 
 
 variable "qcow_image_filename" {
@@ -38,141 +33,43 @@ variable "qcow_image_path" {
     default  = "/home/uros"
 }
 
-variable "control_node_prefix" {
+variable "aio_node_prefix" {
     description = "Control node prefix."
-    default  = "control"
+    default  = "aio"
 }
 
-variable "control_node_count" {
-    description = "The number of control nodes."
-    default  = "3"
+variable "aio_node_count" {
+    description = "The number of aio nodes."
+    default  = "1"
 }
 
-variable "control_node_cpu" {
+variable "aio_node_cpu" {
     description = "Control node cpu's."
     default  = "4"
 }
 
-variable "control_node_memory" {
+variable "aio_node_memory" {
     description = "Control node memory."
     default  = "16384"
 }
 
-variable "control_node_disk" {
+variable "aio_node_disk" {
     description = "Control node disk size."
     default  = "85899345920"
 }
 
-variable "control_disks" {
-    description = "Control node Swift disks."
-    default  = "3"
-}
 
-variable "control_node_vlan" {
+variable "aio_node_vlan" {
   type = "map"
 
   default = {
-    br_mgmt = "172.29.236.10/22"
+    ens3 = "10.200.0.100/24"
+    ens3_gateway = "10.200.0.1"
+    br_mgmt = "172.29.236.100/22"
     br_ovs = "172.29.240.10/22"
     br_storage = "172.29.244.10/22"
-    br_repl = "172.29.248.10/22"
-    br_pxe = "172.23.208.10/22"
+    br_pxe = "172.20.200.10/22"
     ip_offset = 10 
-    netmask = 22
-  }
-}
-
-variable "infra_node_prefix" {
-    description = "Infra node prefix."
-    default  = "infra"
-}
-
-variable "infra_node_count" {
-    description = "The number of infra nodes."
-    default  = "2"
-}
-
-variable "infra_node_cpu" {
-    description = "Infra node cpu's."
-    default  = "2"
-}
-
-variable "infra_node_memory" {
-    description = "Infra node memory."
-    default  = "4096"
-}
-
-variable "infra_node_disk" {
-    description = "Infranode disk size."
-    default  = "21474836480"
-}
-
-variable "infra_node_vlan" {
-  type = "map"
-
-  default = {
-    br_mgmt = "172.29.236.10/22"
-    ip_offset = 16
-    netmask = 22
-  }
-}
-
-variable "ironic_node_prefix" {
-    description = "Ironic node prefix."
-    default  = "ironic"
-}
-
-variable "ironic_node_count" {
-    description = "The number of ironic nodes."
-    default  = "2"
-}
-
-variable "ironic_node_cpu" {
-    description = "Ironic node cpu's."
-    default  = "2"
-}
-
-variable "ironic_node_memory" {
-    description = "Ironic node memory."
-    default  = "6144"
-}
-
-variable "ironic_node_disk" {
-    description = "Ironic node disk size."
-    default  = "21474836480"
-}
-
-variable "logging_node_prefix" {
-    description = "Infra node prefix."
-    default  = "logging"
-}
-
-variable "logging_node_count" {
-    description = "The number of logging nodes."
-    default  = "1"
-}
-
-variable "logging_node_cpu" {
-    description = "Infra node cpu's."
-    default  = "2"
-}
-
-variable "logging_node_memory" {
-    description = "Infra node memory."
-    default  = "4096"
-}
-
-variable "logging_node_disk" {
-    description = "Infranode disk size."
-    default  = "21474836480"
-}
-
-variable "logging_node_vlan" {
-  type = "map"
-
-  default = {
-    br_mgmt = "172.29.236.10/22"
-    ip_offset = 18
     netmask = 22
   }
 }

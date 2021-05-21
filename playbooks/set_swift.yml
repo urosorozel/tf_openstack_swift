@@ -1,60 +1,67 @@
 ---
 - name: Setup Minimal Swift
-  hosts: openstack-controller
+  hosts: aio 
   remote_user: root
+  become: yes
   vars:
-    Swift_mode: physical
-    disks:
-      swift: [vdb, vdc, vdd]
-  tags:
-    - object
-    - object_stand_alone
+    bootstrap_host_loopback_swift_size: 1024
+    # Set the data disk mount options.
+    bootstrap_host_data_mount_options:
+      machinectl: "noatime,nodiratime,compress=lzo,commit=120,{{ (ansible_kernel is version('4.5', '>=')) | ternary('space_cache=v2', 'space_cache') }}"
+      zfs: "defaults"
+      btrfs: "noatime,nodiratime,compress=lzo,commit=120,{{ (ansible_kernel is version('4.5', '>=')) | ternary('space_cache=v2', 'space_cache') }}"
+      xfs: "noatime,nodiratime,logbufs=8,logbsize=256k"
+      ext4: "noatime,nobh,barrier=0,data=writeback"
+      dir: "defaults"
+      lvm: "defaults"
+      swap: "%%"
   tasks:
-    - name: Install Necessary Base Packages
-      apt: pkg={{ item }} state=present update_cache=yes force=yes
+
+    - name: Create sparse Swift files
+      command: "truncate -s {{ bootstrap_host_loopback_swift_size }}G /openstack/{{ item }}.img"
+      args:
+        creates: "/openstack/{{ item }}.img"
       with_items:
-        - xfsprogs
-        - parted
+        - 'swift1'
+        - 'swift2'
+        - 'swift3'
+      tags:
+        - swift-file-create
 
-    - name: Ensure '/openstack' directory exists
-      file:
-        dest: /openstack
-        state: directory
-
-    - name: Remove existing GPT partitions by writing MSDOS label
-      command: parted -a optimal --script "/dev/{{ item}}" mklabel msdos
-      with_items: "{{ disks.swift }}"
-      when: Swift_mode == "physical"
-      tags: data_disk
-
-    - name: Create partition
-      command: parted -a optimal --script "/dev/{{ item}}" mklabel gpt mkpart primary 2048s 100%
-      with_items: "{{ disks.swift }}"
-      when: Swift_mode == "physical"
-      tags: data_disk
-
-    - name: Format the (physical) swift disks
-      command: mkfs.xfs -f /dev/{{ item }}1
-      with_items: "{{ disks.swift }}"
-      when: Swift_mode == "physical"
-      tags: data_disk
-
-    - name: Get UUID of devices
-      command: blkid -o value -s UUID /dev/{{ item }}1
-      with_items: "{{ disks.swift }}"
-      register: disk_uuid
-      tags: data_disk
-
-    - name: Create the (physical) Swift mount points, fstab entries and mount the file systems
-      mount:
-        name: /srv/nodes/{{ item.item }}
-        src:  UUID={{ item.stdout_lines[0] }}
+    - name: Format the Swift files
+      filesystem:
         fstype: xfs
-        passno: 0
-        dump: 0
-        state: mounted
-        opts: 'noatime,nodiratime,nobarrier,logbufs=8,nofail'
-      with_items: "{{ disk_uuid.results }}"
-      when: Swift_mode == "physical"
-      tags: data_disk
+        opts: "{{ bootstrap_host_format_options['xfs'] | default(omit) }}"
+        dev: "/openstack/{{ item }}.img"
+      with_items:
+        - 'swift1'
+        - 'swift2'
+        - 'swift3'
+      tags:
+        - swift-format-file
 
+    - name: Run the systemd mount role
+      include_role:
+        name: systemd_mount
+      vars:
+        systemd_mounts:
+          - what: "/openstack/swift1.img"
+            where: "/srv/swift1.img"
+            options: "loop,{{ bootstrap_host_data_mount_options['xfs'] }}"
+            type: "xfs"
+            state: 'started'
+            enabled: true
+          - what: "/openstack/swift2.img"
+            where: "/srv/swift2.img"
+            options: "loop,{{ bootstrap_host_data_mount_options['xfs'] }}"
+            type: "xfs"
+            state: 'started'
+            enabled: true
+          - what: "/openstack/swift3.img"
+            where: "/srv/swift3.img"
+            options: "loop,{{ bootstrap_host_data_mount_options['xfs'] }}"
+            type: "xfs"
+            state: 'started'
+            enabled: true
+      tags:
+        - swift-config

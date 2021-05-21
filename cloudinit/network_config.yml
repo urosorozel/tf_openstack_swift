@@ -5,13 +5,6 @@ ethernets:
         name: ens3
     set-name: ens3
     dhcp4: false
-  %{ if br_repl != "" }
-  ens4:
-    match:
-        name: ens4
-    set-name: ens4
-    dhcp4: false
-  %{ endif }
   %{ if br_pxe != "" }
   ens5:
     match:
@@ -29,25 +22,19 @@ bonds:
   bond0:
     interfaces: [ens3]
     dhcp4: true
+    addresses:
+            - 10.200.0.100/24
     mtu: 9000
     parameters:
       mode: active-backup
       min-links: 1
-  %{ if br_repl != "" }
-  bond1:
-    interfaces: [ens4]
-    dhcp4: false
-    mtu: 9000
-    parameters:
-      mode: active-backup
-      min-links: 1
-  %{ endif }
 bridges:
   br-mgmt:
     interfaces: [mgmt-vlan]
     dhcp4: false
     addresses:
             - ${br_mgmt}/22
+            - 172.29.236.100/22
     parameters:
             stp: true
   %{ if br_ovs != "" }
@@ -70,16 +57,6 @@ bridges:
     parameters:
             stp: true
   %{ endif }
-  %{ if br_repl != "" }
-  br-repl:
-    interfaces: [repl-vlan]
-    dhcp4: false
-    mtu: 9000
-    addresses:
-            - ${br_repl}/22
-    parameters:
-            stp: true
-  %{ endif }
 vlans:
   mgmt-vlan:
     id: 100
@@ -94,11 +71,5 @@ vlans:
   storage-vlan:
     id: 102
     link: bond0
-    mtu: 9000
-  %{ endif }
-  %{ if br_repl != "" }
-  repl-vlan:
-    id: 103
-    link: bond1
     mtu: 9000
   %{ endif }

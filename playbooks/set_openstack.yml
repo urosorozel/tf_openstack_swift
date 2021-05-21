@@ -1,5 +1,5 @@
 - name: Install deps
-  hosts: openstack-controller
+  hosts: aio 
   tasks:
    - name: Install
      apt:
@@ -13,25 +13,46 @@
          - python3-guestfs
          - liberasurecode-dev #swift
          - openvswitch-switch
+         - nginx
        update_cache: yes
 
    - name: Add pxe OVS bridge
      shell: |
          ovs-vsctl add-br br-pxe
-         ovs-vsctl add-port br-pxe ens5
+         ovs-vsctl add-port br-pxe ens4
      ignore_errors: yes
 
    - name: Update
      shell: |
          netplan apply
 
+   - name: Stop nginx
+     service:
+       name: nginx
+       state: stopped
+
+   - name: Remove default nginx site
+     file:
+       path: etc/nginx/sites-enabled/default
+       state: absent
+
 - name: Set Openstack
-  hosts: control-01.openstack.net
+  hosts: aio
   tasks:
    - name: Install openstacksdk
      apt:
        name:
-          - python3-openstacksdk
+          - python3-pip
+       # pip3 install -U pip setuptools
+
+   - name: pip self-update
+     pip:
+       name: pip
+       state: latest
+
+   - name: Install latest openstack sdk
+     pip:
+        name: openstacksdk 
 
    - name: Clone repo
      git:
@@ -67,6 +88,38 @@
        SETUP_ARA: false
        OSA_RELEASE: "{{ osa_release }}"
 
+   - name: Update Swift proxy template to bind on openstack_service_bind_address
+     replace:
+       path: /etc/ansible/roles/os_swift/templates/proxy-server.conf.j2
+       regexp: "bind_ip = 0.0.0.0"
+       replace: "{% raw %}bind_ip = {{ openstack_service_bind_address }}{% endraw %}"
+
+   - name: Copy AIO swift play
+     copy:
+       src: ../files/set_swift.yml
+       dest: /opt/openstack-ansible/set_swift.yml
+       remote_src: no
+
+   - name: Run Swift prepare
+     command: openstack-ansible /opt/openstack-ansible/set_swift.yml
+
+   - name: Add rules
+     iptables:
+       action: insert
+       table: nat
+       chain: OUTPUT
+       out_interface: lo
+       destination: 127.0.0.1
+       protocol: tcp
+       jump: DNAT
+       to_destination: "{{ ansible_default_ipv4.address }}:3306"
+       comment: "Forward localhost mysql to ip address"
+
+   - name: Allow localnet redirect
+     sysctl:
+       name: net.ipv4.conf.all.route_localnet
+       value: '1'
+       state: present
 
    - name: Add control nodes
      template:
@@ -86,6 +139,14 @@
      copy:
        src: ../openstack/user_local_variables.yml
        dest: /etc/openstack_deploy/user_local_variables.yml
+       remote_src: no
+     tags:
+       - template
+
+   - name: Copy openstack_user_config.yml
+     copy:
+       src: ../openstack/openstack_user_config.yml
+       dest: /etc/openstack_deploy/openstack_user_config.yml
        remote_src: no
      tags:
        - template
@@ -111,10 +172,10 @@
    - name: Deploy SSH-Keys to remote host
      authorized_key:
        user: root
-       key: "{{ hostvars['control-01.openstack.net'].slurpfile['content'] | b64decode }}"
+       key: "{{ hostvars['aio-01.openstack-aio.net'].slurpfile['content'] | b64decode }}"
 
 - name: Set Openstack
-  hosts: control-01.openstack.net
+  hosts: aio-01.openstack-aio.net
   tasks:
 
    - name: Remove

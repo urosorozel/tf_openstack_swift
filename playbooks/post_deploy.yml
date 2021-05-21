@@ -1,5 +1,5 @@
 - name: Install deps
-  hosts: control-01.openstack.net
+  hosts: aio-01.openstack-aio.net
   tasks:
     - name: Copy post deploy play to infra1 node
       copy:

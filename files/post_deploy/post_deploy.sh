@@ -4,8 +4,8 @@ export CONTENT="Content-Type: application/json"
 export API='Openstack-API-Version: placement 1.10'
 source openrc
 
-#wget -q http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-rocky.vmlinuz  -O tinyipa_production_pxe.vmlinuz
-#wget -q http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-rocky.gz -O tinyipa_production_pxe_image-oem.cpio.gz
+#wget -q http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-ussuri.vmlinuz  -O tinyipa_production_pxe.vmlinuz
+#wget -q http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-ussuri.gz -O tinyipa_production_pxe_image-oem.cpio.gz
 # Load deployment image kernel into glance
 #DEPLOY_VMLINUZ_UUID=$(openstack image create --container-format aki --disk-format aki --file tinyipa_production_pxe.vmlinuz tinyipa_kernel -f value -c id)
 #DEPLOY_INITRD_UUID=$(openstack image create --container-format aki --disk-format aki --file tinyipa_production_pxe_image-oem.cpio.gz tinyipa_ramdisk -f value -c id)

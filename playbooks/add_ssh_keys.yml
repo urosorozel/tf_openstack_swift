@@ -1,5 +1,5 @@
 - name: Set Openstack
-  hosts: control-01.openstack.net
+  hosts: aio-01.openstack-aio.net
   tasks:
    - name: Slurp hosts file
      slurp:
@@ -13,5 +13,5 @@
      - name: Deploy SSH-Keys to remote host
        authorized_key:
          user: root
-         key: "{{ hostvars['control-01.openstack.net'].slurpfile['content'] | b64decode }}"
+         key: "{{ hostvars['aio-01.openstack-aio.net'].slurpfile['content'] | b64decode }}"
          exclusive: true

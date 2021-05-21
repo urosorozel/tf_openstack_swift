@@ -20,6 +20,16 @@ glance_default_store: swift
 #nova_ceph_client: "{{ cinder_ceph_client }}"
 #nova_ceph_client_uuid: "{{ cinder_ceph_client_uuid }}"
 #nova_libvirt_images_rbd_pool: vms
+openstack_service_bind_address: "{{ ansible_default_ipv4.address }}"
+rabbitmq_management_bind_address: "{{ ansible_default_ipv4.address }}" 
+galera_address: "{{ ansible_default_ipv4.address }}"
+#keystone_db_setup_host: 10.200.0.191
+#swift_storage_address: 10.200.0.191
+#rabbitmq_port_bindings:
+#  ssl_listeners:
+#    "172.29.236.11": 5671
+#  tcp_listeners:
+#    "172.29.236.11": 5672
 
 #nova_novncproxy_git_install_branch: '8c2866df3619e49d629b5f98c20d27a7c72d102a'
 
@@ -35,8 +45,8 @@ neutron_plugin_base:
 
 neutron_plugin_type: ml2.ovs.dvr
 
-neutron_plugin_types:
-   - ml2.baremetal
+#neutron_plugin_types:
+#   - ml2.baremetal
 #haproxy_extra_services:
 #  - service:
 #      haproxy_service_name: ceph_rgw
@@ -83,15 +93,15 @@ nova_scheduler_default_filters:
   - NUMATopologyFilter
 nova_scheduler_extra_filters: []
 
-haproxy_keepalived_external_vip_cidr: 10.240.0.10/32
-haproxy_keepalived_internal_vip_cidr: 172.29.236.10/32
+haproxy_keepalived_external_vip_cidr: 10.200.0.100/32
+haproxy_keepalived_internal_vip_cidr: 172.29.236.100/32
 
-galera_monitoring_allowed_source: "127.0.0.1 {{ container_cidr }} 10.240.0.0/22"
+galera_monitoring_allowed_source: "127.0.0.1 {{ container_cidr }} 10.200.0.0/22"
 
 haproxy_keepalived_external_interface: bond0
 haproxy_keepalived_internal_interface: br-mgmt
 apply_security_hardening: false
-openstack_domain: cloud01.cloud.skypod.io
+openstack_domain: openstack-aio.local
 
 # Ebable swift temp url
 ironic_enable_web_server_for_images: false
@@ -138,14 +148,14 @@ haproxy_extra_services:
       haproxy_service_enabled: "{{ groups['ironic_inspector'] is defined and groups['ironic_inspector'] | length > 0 }}"
 
 # No need to reserver memory with ironic only
-default_ipa_image_server_ip: 10.184.227.94
-ipa_kernel_name: "ubuntu_kernel"
-ipa_ramdisk_name: "ubuntu_ramdisk"
+default_ipa_image_server_ip: 10.184.227.238:8000
+ipa_kernel_name: "ipa_kernel"
+ipa_ramdisk_name: "ipa_ramdisk"
 ipa_image_server_ip: "{{ lookup('env', 'IPA_IMAGE_SERVER') | default(default_ipa_image_server_ip, True) }}"
-ironic_inspector_ipa_kernel_url: "http://{{ipa_image_server_ip}}/ubuntu_kernel"
-ironic_inspector_ipa_kernel_sha256_url: "http://{{ipa_image_server_ip}}/ubuntu_kernel.sha256"
-ironic_inspector_ipa_initrd_url: "http://{{ipa_image_server_ip}}/ubuntu_ramdisk"
-ironic_inspector_ipa_initrd_sha256_url: "http://{{ipa_image_server_ip}}/ubuntu_ramdisk.sha256"
+ironic_inspector_ipa_kernel_url: "http://{{ipa_image_server_ip}}/{{ ipa_kernel_name }}"
+ironic_inspector_ipa_kernel_sha256_url: "http://{{ipa_image_server_ip}}/{{ ipa_kernel_name }}.sha256"
+ironic_inspector_ipa_initrd_url: "http://{{ipa_image_server_ip}}/{{ ipa_ramdisk_name }}"
+ironic_inspector_ipa_initrd_sha256_url: "http://{{ipa_image_server_ip}}/{{ ipa_ramdisk_name }}.sha256"
 ironic_inspector_tftpboot_dir: /tftpboot_inspector
 ironic_pxe_config_template: "/etc/ironic/ipxe_config.template"
 ironic_uefi_pxe_config_template: "/etc/ironic/ipxe_config.template"
@@ -169,32 +179,32 @@ cloud_images:
 ipa_images:
 #   coreos:
 #     kernel:
-#       url: "http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe-stable-rocky.vmlinuz"
+#       url: "http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe-stable-ussuri.vmlinuz"
 #       name: "coreos_kernel"
 #     ramdisk:
-#       url: "http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe_image-oem-stable-rocky.cpio.gz"
+#       url: "http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe_image-oem-stable-ussuri.cpio.gz"
 #       name: "coreos_ramdisk"
   tinyipa:
     kernel:
-      url: "http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-rocky.vmlinuz"
+      url: "http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-ussuri.vmlinuz"
       name: "tinyipa_kernel"
     ramdisk:
-      url: "http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-rocky.gz"
+      url: "http://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-stable-ussuri.gz"
       name: "tinyipa_ramdisk"
   ubuntu:
     kernel:
-      name: "ubuntu_kernel"
-      url: "http://{{ipa_image_server_ip}}/ubuntu_kernel"
+      name: "{{ ipa_kernel_name }}"
+      url: "http://{{ipa_image_server_ip}}/{{ ipa_kernel_name }}"
     ramdisk:
-      name: "ubuntu_ramdisk"
-      url: "http://{{ipa_image_server_ip}}/ubuntu_ramdisk"
+      name: "{{ ipa_ramdisk_name }}"
+      url: "http://{{ipa_image_server_ip}}/{{ ipa_ramdisk_name }}"
 
 
 # HAPROXY
 haproxy_bind_on_non_local: True
 
 # swift
-#swift_fallocate_reserve: "1%%" 
+#swift_fallocate_reserve: "1%%"
 journald_remote_enabled: true
 # power state sync
 ironic_sync_power_state_interval: 300

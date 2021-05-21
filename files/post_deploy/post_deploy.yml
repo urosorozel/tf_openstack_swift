@@ -250,7 +250,7 @@
 
     - name: Make sure swift container has temp key added
       command: |
-        swift  --os-username "service:glance" --os-password "{{ glance_service_password }}" --os-auth-url http://internalapi.rsprivatecloud.net:5000/v3 --os-identity-api-version 3 post -m "temp-url-key:{{ ironic_swift_temp_url_secret_key }}"
+        swift  --os-username "service:glance" --os-password "{{ glance_service_password }}" --os-auth-url http://172.29.236.100:5000/v3 --os-identity-api-version 3 post -m "temp-url-key:{{ ironic_swift_temp_url_secret_key }}"
 
     - name: Include vars
       include_vars:
