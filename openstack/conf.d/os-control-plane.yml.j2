@@ -2,7 +2,7 @@
 
 controller_hosts: &controller_hosts
   controller1:
-    ip: "{{ ansible_default_ipv4.address }}" 
+    ip: 172.29.236.11 
     no_containers: true
     container_vars:
       nova_virt_type: ironic

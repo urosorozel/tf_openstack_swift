@@ -1,1 +1,4 @@
 osa_release: "21.2.3"
+default_host_nameserver: 1.1.1.1
+host_nameservers: "{{ lookup('env', 'NAME_SERVER') | default(default_host_nameserver, True) }}"
+ansible_python_interpreter: /usr/bin/python3
