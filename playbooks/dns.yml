@@ -1,0 +1,58 @@
+---
+- name: Install dnsmasq
+  apt:
+    name: dnsmasq
+    update_cache: yes
+    state: present
+
+- name: Stop and disable
+  systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: false
+
+- name: Add dnsmasq config
+  copy:
+    dest: /etc/private.conf
+    content: |
+      domain-needed
+      bogus-priv
+      local=/local/
+      interface=bond0
+      listen-address=10.200.0.100,172.20.200.11
+      interface=br-pxe
+      addn-hosts=/etc/banner_add_hosts
+      strict-order
+      expand-hosts
+      domain=local
+      no-resolv
+      server={{host_nameservers}}
+      #log-queries
+
+- name: Add dnsmasq hosts
+  blockinfile:
+    path: /etc/banner_add_hosts
+    create: yes
+    block: |
+      10.200.0.100 public public.openstack-aio.local
+      172.29.236.100 private private.openstack-aio.local
+
+- name: Remove resolv.conf soft link
+  file:
+    path: /etc/resolv.conf
+    state: absent
+
+- name: Add nameservers to resolv.conf
+  blockinfile:
+    path: /etc/resolv.conf
+    create: yes
+    block: |
+      nameserver {{host_nameservers}}
+      nameserver {{ ansible_default_ipv4.address }}
+
+- name: Enable auto restart of dnsmasq
+  ini_file:
+    path: /lib/systemd/system/dnsmasq.service
+    section: Service
+    option: Restart
+    value: always
