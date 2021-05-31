@@ -16,15 +16,16 @@
     dest: /etc/private.conf
     content: |
       domain-needed
+      bind-interfaces
       bogus-priv
-      local=/local/
+      local=/openstack-aio.net/
       interface=bond0
       listen-address=10.200.0.100,172.20.200.11
       interface=br-pxe
       addn-hosts=/etc/banner_add_hosts
       strict-order
       expand-hosts
-      domain=local
+      domain=openstack-aio.net
       no-resolv
       server={{host_nameservers}}
       #log-queries
@@ -34,8 +35,8 @@
     path: /etc/banner_add_hosts
     create: yes
     block: |
-      10.200.0.100 public public.openstack-aio.local
-      172.29.236.100 private private.openstack-aio.local
+      10.200.0.100 public public.openstack-aio.net
+      172.29.236.100 private private.openstack-aio.net
 
 - name: Remove resolv.conf soft link
   file:

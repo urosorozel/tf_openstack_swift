@@ -101,19 +101,22 @@ galera_monitoring_allowed_source: "127.0.0.1 {{ container_cidr }} 10.200.0.0/22"
 haproxy_keepalived_external_interface: bond0
 haproxy_keepalived_internal_interface: br-mgmt
 apply_security_hardening: false
-openstack_domain: openstack-aio.local
+openstack_domain: openstack-aio.net
 
 # Ebable swift temp url
 ironic_enable_web_server_for_images: false
-# ironic_tftp_server_address: "{{ container_networks.ironic_address.address }}"
+ironic_tftp_server_address: 172.20.200.11
 # separate ironic tftp from inspector
 ironic_inspector_ipa_tftpboot_image_dir: "/tftpboot_inspector"
 ironic_swift_endpoint: "http://{{ external_lb_vip_address }}:8080"
 ironic_neutron_cleaning_network_uuid: "ironic-network"
 ironic_neutron_provisioning_network_name: "ironic-network"
-ironic_inspector_pxe_append_params: "systemd.journald.forward_to_console=yes console=tty0 console=ttyS0,115200n8 ipa-insecure=1 ramdisk_size=3485760 ipa-inspection-collectors=default,extra-hardware,logs"
+ironic_inspector_pxe_append_params: "console=tty0 console=ttyS0,115200n8 ipa-insecure=1 ramdisk_size=3485760 ipa-inspection-collectors=default,extra-hardware,logs"
 #ipa-collect-lldp=1 ipa-inspection-benchmarks=cpu,mem,disk"
-ironic_pxe_append_params: "systemd.journald.forward_to_console=yes console=tty0 console=ttyS0,115200n8 ipa-insecure=1"
+ironic_pxe_append_params: "console=tty0 console=ttyS0,115200n8 ipa-insecure=1"
+ironic_inspector_dhcp_pool_range: 172.20.203.100 172.20.203.254
+ironic_inspector_dhcp_gateway: 172.20.200.1
+ironic_inspector_dhcp_nameservers: 172.20.200.11
 
 # Enable ironic inspector
 ironic_inspector_ironic_enable: True
@@ -156,7 +159,7 @@ ironic_inspector_ipa_kernel_url: "http://{{ipa_image_server_ip}}/{{ ipa_kernel_n
 ironic_inspector_ipa_kernel_sha256_url: "http://{{ipa_image_server_ip}}/{{ ipa_kernel_name }}.sha256"
 ironic_inspector_ipa_initrd_url: "http://{{ipa_image_server_ip}}/{{ ipa_ramdisk_name }}"
 ironic_inspector_ipa_initrd_sha256_url: "http://{{ipa_image_server_ip}}/{{ ipa_ramdisk_name }}.sha256"
-ironic_inspector_tftpboot_dir: /tftpboot_inspector
+ironic_inspector_tftpboot_dir: /tftpboot
 ironic_pxe_config_template: "/etc/ironic/ipxe_config.template"
 ironic_uefi_pxe_config_template: "/etc/ironic/ipxe_config.template"
 

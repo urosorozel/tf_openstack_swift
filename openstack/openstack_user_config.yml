@@ -12,8 +12,8 @@ used_ips:
   - "172.29.252.1,172.29.254.255"
 
 global_overrides:
-  internal_lb_vip_address: private.openstack-aio.local 
-  external_lb_vip_address: public.openstack-aio.local
+  internal_lb_vip_address: private.openstack-aio.net
+  external_lb_vip_address: public.openstack-aio.net
   management_bridge: "br-mgmt"
   tunnel_bridge: "br-ovs"
   provider_networks:

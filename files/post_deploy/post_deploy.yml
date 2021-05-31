@@ -73,12 +73,11 @@
         state: present
         network_name: ironic-network
         name: ironic-subnet
-        cidr: 172.23.208.0/22 
-        allocation_pool_start: 172.23.208.10
-        allocation_pool_end: 172.23.210.254
+        cidr: 172.20.200.0/22 
+        allocation_pool_start: 172.20.203.100
+        allocation_pool_end: 172.20.203.200
         dns_nameservers:
-           - 1.1.1.1
-           - 8.8.8.8
+           - 172.20.200.11
         validate_certs: False
 
     - name: Update quotas

@@ -103,6 +103,12 @@
        regexp: "bind_ip = 0.0.0.0"
        replace: "{% raw %}bind_ip = {{ openstack_service_bind_address }}{% endraw %}"
 
+       #   - name: Disable separate ironic inspector tftp
+       #     lineinfile:
+       #       path: /etc/ansible/roles/os_ironic/templates/dnsmasq.conf.j2
+       #       state: absent
+       #       regexp: '*.tftp*.'
+
    - name: Copy AIO swift play
      copy:
        src: ../files/set_swift.yml
@@ -168,6 +174,15 @@
        content: |
             ironic_inspector_oslomsg_rpc_password:
             ironic_inspector_swift_password:
+
+   - name: Add hosts
+     blockinfile:
+       path: /etc/hosts
+       marker: "# {mark} DNS HOSTS"
+       insertafter: "EOF"
+       content: |
+         10.200.0.100 public public.openstack-aio.net
+         172.29.236.100 private private.openstack-aio.net
 
    - name: Slurp hosts file
      slurp:
